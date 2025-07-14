@@ -4,6 +4,9 @@ import redis
 from pymongo import MongoClient
 import httpx
 import pika
+from app.config import get_settings
+
+settings = get_settings()
 
 app = FastAPI()
 
@@ -25,7 +28,7 @@ if os.getenv("DEBUG", "false").lower() == "true":
 @app.get("/test/redis")
 def test_redis():
     try:
-        r = redis.Redis(host="redis", port=6379)
+        r = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
         r.set("test_key", "test_value")
         value = r.get("test_key")
         return {"redis_alive": True, "value": value.decode()}
@@ -36,7 +39,7 @@ def test_redis():
 @app.get("/test/mongo")
 def test_mongo():
     try:
-        client = MongoClient("mongodb://admin:admin123@mongo:27017")
+        client = MongoClient(settings.MONGO_URI)
         db = client.test_db
         result = db.test_col.insert_one({"name": "sample", "value": 123})
         return {"mongo_alive": True, "inserted_id": str(result.inserted_id)}
@@ -47,7 +50,9 @@ def test_mongo():
 @app.get("/test/qdrant")
 def test_qdrant():
     try:
-        response = httpx.get("http://qdrant:6333/collections")
+        response = httpx.get(
+            f"http://{settings.QDRANT_HOST}:{settings.QDRANT_PORT}/collections"
+        )
         return {"qdrant_alive": response.status_code == 200, "data": response.json()}
     except Exception as e:
         return {"qdrant_alive": False, "error": str(e)}
@@ -56,9 +61,11 @@ def test_qdrant():
 @app.get("/test/rabbitmq")
 def test_rabbitmq():
     try:
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq"))
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host=settings.RABBITMQ_HOST)
+        )
         channel = connection.channel()
-        channel.queue_declare(queue="test_queue")
+        channel.queue_declare(queue=settings.RABBITMQ_QUEUE)
         channel.basic_publish(
             exchange="", routing_key="test_queue", body="Hello RabbitMQ!"
         )
