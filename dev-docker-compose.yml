@@ -80,6 +80,22 @@ services:
       - app-network
     restart: always
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"      # 메시징 포트
+      - "15672:15672"    # 웹 UI 포트
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - app-network
+    restart: always
+
+
 networks:
   app-network:
     driver: bridge
@@ -87,3 +103,4 @@ networks:
 volumes:
   mongodb:
   redis-data:
+  rabbitmq-data:
