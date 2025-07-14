@@ -4,6 +4,7 @@ from fastapi import FastAPI
 import redis
 from pymongo import MongoClient
 import httpx
+import pika
 
 app = FastAPI()
 
@@ -37,3 +38,18 @@ def test_qdrant():
         return {"qdrant_alive": response.status_code == 200, "data": response.json()}
     except Exception as e:
         return {"qdrant_alive": False, "error": str(e)}
+
+
+@app.get("/test/rabbitmq")
+def test_rabbitmq():
+    try:
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq"))
+        channel = connection.channel()
+        channel.queue_declare(queue="test_queue")
+        channel.basic_publish(
+            exchange="", routing_key="test_queue", body="Hello RabbitMQ!"
+        )
+        connection.close()
+        return {"rabbitmq_alive": True}
+    except Exception as e:
+        return {"rabbitmq_alive": False, "error": str(e)}
