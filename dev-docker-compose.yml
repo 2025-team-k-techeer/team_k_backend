@@ -1,7 +1,13 @@
 
 services:
-  backend:
-    build: ./backend                 
-    container_name: backend
+  fastapi:
+    build:
+      context: ./backend
     ports:
-      - "8000:8000"
+      - "8000:8000"   # 외부에서 8080 → 내부 8000
+      - "5678:5678"   # debugpy 연결
+    volumes:
+      - ./backend:/app
+    environment:
+      - DEBUG=true
+    

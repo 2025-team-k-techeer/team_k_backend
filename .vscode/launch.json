@@ -2,21 +2,19 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "FastAPI (uvicorn)",
+      "name": "🐍 Python: Attach to Docker (FastAPI)",
       "type": "debugpy",
-      "request": "launch",
-      "module": "uvicorn",
-      "args": [
-        "backend.app.main:app",
-        "--reload",
-        "--host",
-        "127.0.0.1",
-        "--port",
-        "8000"
-      ],
-      "jinja": true,
-      "justMyCode": true,
-      "envFile": "${workspaceFolder}/.env"
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5678
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}/backend/app",
+          "remoteRoot": "/app/app"
+        }
+      ]
     }
   ]
 }
