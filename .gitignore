@@ -56,8 +56,6 @@ coverage.xml
 # PyCharm
 .idea/
 
-# VS Code
-
 
 # macOS
 .DS_Store
