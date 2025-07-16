@@ -6,7 +6,8 @@ import httpx
 import asyncio
 from PIL import Image
 from io import BytesIO
-from ..config import get_settings
+
+# from ..config import get_settings
 
 # def is_rate_limited(
 #     ip: str, api_key: str, window_seconds: int, rate_limit: int
@@ -18,22 +19,7 @@ from ..config import get_settings
 #         return True
 #     request_log[ip].append(now)
 #     return False
-settings = get_settings()
-
-
-def download_image_from_url(url: str, index: int, image_dir: str) -> str:
-    try:
-        response = httpx.get(url, timeout=10)
-        response.raise_for_status()
-        img = Image.open(BytesIO(response.content))
-        filename = f"generated_{index+1}.png"
-        filepath = os.path.join(image_dir, filename)
-        img.save(filepath)
-        print(f"🖼️ 이미지 저장 완료: {filepath}")
-        return filepath
-    except Exception as e:
-        print(f"⚠️ 이미지 저장 실패: {e}")
-        return ""
+# settings = get_settings()
 
 
 async def generate_image(image_url: str, theme: str, room: str, img_dir: str):
@@ -46,7 +32,7 @@ async def generate_image(image_url: str, theme: str, room: str, img_dir: str):
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Token {settings.REPLICATE_API_KEY}",
+        "Authorization": f"Token r8_64UBb1VW8BWGyFdcxbTk9ZPvg5sWfJT1QWz2D",
     }
 
     payload = {
@@ -85,15 +71,8 @@ async def generate_image(image_url: str, theme: str, room: str, img_dir: str):
                     await asyncio.sleep(1)
 
             print("✅ Image generated successfully:")
-            print(restored_images)
 
-            saved_paths = []
-            for i, url in enumerate(restored_images):
-                path = download_image_from_url(url, i, img_dir)
-                if path:
-                    saved_paths.append(path)
-
-            return saved_paths
+            return restored_images[1]
 
         except httpx.HTTPStatusError as e:
             print(":x: HTTP Error:", e.response.text)
