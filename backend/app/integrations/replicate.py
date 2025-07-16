@@ -5,55 +5,50 @@ import time
 import httpx
 from collections import defaultdict
 import asyncio
-from urllib.parse import urlparse
-
-# from PIL import Image
+from PIL import Image
 from io import BytesIO
 
 from config import get_settings
 
 
-# 환경 변수 로드
-REPLICATE_API_KEY = get_settings().replicate_api_key
-
-# 이미지 저장 폴더
-IMAGE_DIR = "generated_images"
-os.makedirs(IMAGE_DIR, exist_ok=True)
-
-# 간단한 IP Rate Limiter
-request_log = defaultdict(list)
-RATE_LIMIT = 5
-WINDOW_SECONDS = 86400
-user_ip = "192.168.0.1"
-
-
-def is_rate_limited(ip: str):
+def is_rate_limited(
+    ip: str, api_key: str, window_seconds: int, rate_limit: int
+) -> bool:
+    request_log = defaultdict(list)
     now = time.time()
-    request_log[ip] = [t for t in request_log[ip] if now - t < WINDOW_SECONDS]
-    if len(request_log[ip]) >= RATE_LIMIT:
+    request_log[ip] = [t for t in request_log[ip] if now - t < window_seconds]
+    if len(request_log[ip]) >= rate_limit:
         return True
     request_log[ip].append(now)
     return False
 
 
-def download_image_from_url(url: str, index: int):
+def download_image_from_url(url: str, index: int, image_dir: str) -> str:
     try:
         response = httpx.get(url, timeout=10)
         response.raise_for_status()
-        # img = Image.open(BytesIO(response.content))
-        # filename = f"generated_{index+1}.png"
-        # filepath = os.path.join(IMAGE_DIR, filename)
-        # img.save(filepath)
-        # print(f"🖼️ 이미지 저장 완료: {filepath}")
-
-        return BytesIO(response.content).getvalue()
+        img = Image.open(BytesIO(response.content))
+        filename = f"generated_{index+1}.png"
+        filepath = os.path.join(image_dir, filename)
+        img.save(filepath)
+        print(f"🖼️ 이미지 저장 완료: {filepath}")
+        return filepath
     except Exception as e:
         print(f"⚠️ 이미지 저장 실패: {e}")
         return ""
 
 
-async def generate_image(image_url: str, theme: str, room: str):
-    if is_rate_limited(user_ip):
+async def generate_image(
+    image_url: str,
+    api_key: str,
+    rate_limit: int,
+    theme: str,
+    room: str,
+    user_ip: str,
+    img_dir: str,
+    window_seconds: int,
+):
+    if is_rate_limited(user_ip, api_key, window_seconds, rate_limit):
         print(":x: Too many uploads. Please try again in 24 hours.")
         return None
 
@@ -65,7 +60,7 @@ async def generate_image(image_url: str, theme: str, room: str):
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Token {REPLICATE_API_KEY}",
+        "Authorization": f"Token {api_key}",
     }
 
     payload = {
@@ -106,25 +101,15 @@ async def generate_image(image_url: str, theme: str, room: str):
             print("✅ Image generated successfully:")
             print(restored_images)
 
-            saved_images = []
+            saved_paths = []
             for i, url in enumerate(restored_images):
-                img = download_image_from_url(url, i)
-                if img:
-                    saved_images.append(img)
+                path = download_image_from_url(url, i, img_dir)
+                if path:
+                    saved_paths.append(path)
 
-            return saved_images
+            return saved_paths
 
         except httpx.HTTPStatusError as e:
             print(":x: HTTP Error:", e.response.text)
         except Exception as e:
             print(":x: Error:", str(e))
-
-
-# 단독 실행 시 테스트용
-# if __name__ == "__main__":
-#     test_image_url = (
-#         "https://img.freepik.com/free-photo/bedroom-interior_1098-15128.jpg"
-#     )
-#     test_theme = "Professional black and gold"  # 테마 예시
-#     test_room = "bed room"  # 방 타입 비움
-#     asyncio.run(generate_image(test_image_url, test_theme, test_room))
