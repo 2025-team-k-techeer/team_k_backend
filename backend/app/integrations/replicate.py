@@ -3,11 +3,10 @@
 import os
 import time
 import httpx
-from collections import defaultdict
 import asyncio
 from PIL import Image
 from io import BytesIO
-
+from ..config import get_settings
 
 # def is_rate_limited(
 #     ip: str, api_key: str, window_seconds: int, rate_limit: int
@@ -19,6 +18,7 @@ from io import BytesIO
 #         return True
 #     request_log[ip].append(now)
 #     return False
+settings = get_settings()
 
 
 def download_image_from_url(url: str, index: int, image_dir: str) -> str:
@@ -36,28 +36,17 @@ def download_image_from_url(url: str, index: int, image_dir: str) -> str:
         return ""
 
 
-async def generate_image(
-    image_url: str,
-    # rate_limit: int,
-    theme: str,
-    room: str,
-    img_dir: str,
-    # window_seconds
-    # window_seconds: int,
-):
-    # if is_rate_limited(user_ip, api_key, window_seconds, rate_limit):
-    #     print(":x: Too many uploads. Please try again in 24 hours.")
-    #     return None
+async def generate_image(image_url: str, theme: str, room: str, img_dir: str):
 
     prompt = (
         "a room for gaming with gaming computers, gaming consoles, and gaming chairs"
         if room.lower() == "gaming room"
         else f"a {theme.lower()} {room.lower()}"
     )
-    api_key = os.getenv("REPLICATE_API_KEY")
+
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Token {api_key}",
+        "Authorization": f"Token {settings.REPLICATE_API_KEY}",
     }
 
     payload = {
