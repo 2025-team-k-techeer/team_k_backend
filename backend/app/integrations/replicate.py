@@ -4,9 +4,7 @@ import os
 import time
 import httpx
 import asyncio
-from PIL import Image
 from io import BytesIO
-
 from app.config import get_settings
 
 # def is_rate_limited(
