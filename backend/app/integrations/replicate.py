@@ -3,11 +3,11 @@
 import os
 import time
 import httpx
-from dotenv import load_dotenv
 from collections import defaultdict
 import asyncio
 from urllib.parse import urlparse
-from PIL import Image
+
+# from PIL import Image
 from io import BytesIO
 
 from config import get_settings
@@ -36,16 +36,17 @@ def is_rate_limited(ip: str):
     return False
 
 
-def download_image_from_url(url: str, index: int) -> str:
+def download_image_from_url(url: str, index: int):
     try:
         response = httpx.get(url, timeout=10)
         response.raise_for_status()
-        img = Image.open(BytesIO(response.content))
-        filename = f"generated_{index+1}.png"
-        filepath = os.path.join(IMAGE_DIR, filename)
-        img.save(filepath)
-        print(f"🖼️ 이미지 저장 완료: {filepath}")
-        return filepath
+        # img = Image.open(BytesIO(response.content))
+        # filename = f"generated_{index+1}.png"
+        # filepath = os.path.join(IMAGE_DIR, filename)
+        # img.save(filepath)
+        # print(f"🖼️ 이미지 저장 완료: {filepath}")
+
+        return BytesIO(response.content).getvalue()
     except Exception as e:
         print(f"⚠️ 이미지 저장 실패: {e}")
         return ""
@@ -105,13 +106,13 @@ async def generate_image(image_url: str, theme: str, room: str):
             print("✅ Image generated successfully:")
             print(restored_images)
 
-            saved_paths = []
+            saved_images = []
             for i, url in enumerate(restored_images):
-                path = download_image_from_url(url, i)
-                if path:
-                    saved_paths.append(path)
+                img = download_image_from_url(url, i)
+                if img:
+                    saved_images.append(img)
 
-            return saved_paths
+            return saved_images
 
         except httpx.HTTPStatusError as e:
             print(":x: HTTP Error:", e.response.text)
@@ -120,10 +121,10 @@ async def generate_image(image_url: str, theme: str, room: str):
 
 
 # 단독 실행 시 테스트용
-if __name__ == "__main__":
-    test_image_url = (
-        "https://img.freepik.com/free-photo/bedroom-interior_1098-15128.jpg"
-    )
-    test_theme = "Professional black and gold"  # 테마 예시
-    test_room = "bed room"  # 방 타입 비움
-    asyncio.run(generate_image(test_image_url, test_theme, test_room))
+# if __name__ == "__main__":
+#     test_image_url = (
+#         "https://img.freepik.com/free-photo/bedroom-interior_1098-15128.jpg"
+#     )
+#     test_theme = "Professional black and gold"  # 테마 예시
+#     test_room = "bed room"  # 방 타입 비움
+#     asyncio.run(generate_image(test_image_url, test_theme, test_room))
