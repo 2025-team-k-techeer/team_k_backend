@@ -19,7 +19,7 @@ from io import BytesIO
 #         return True
 #     request_log[ip].append(now)
 #     return False
-# settings = get_settings()
+settings = get_settings()
 
 
 async def generate_image(image_url: str, theme: str, room: str, img_dir: str):
@@ -32,7 +32,7 @@ async def generate_image(image_url: str, theme: str, room: str, img_dir: str):
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Token r8_64UBb1VW8BWGyFdcxbTk9ZPvg5sWfJT1QWz2D",
+        "Authorization": f"Token {settings.replicate_api_key}",
     }
 
     payload = {
