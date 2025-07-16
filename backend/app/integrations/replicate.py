@@ -7,7 +7,7 @@ import asyncio
 from PIL import Image
 from io import BytesIO
 
-# from ..config import get_settings
+from app.config import get_settings
 
 # def is_rate_limited(
 #     ip: str, api_key: str, window_seconds: int, rate_limit: int
@@ -32,7 +32,7 @@ async def generate_image(image_url: str, theme: str, room: str, img_dir: str):
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Token {settings.replicate_api_key}",
+        "Authorization": f"Token {settings.REPLICATE_API_KEY}",
     }
 
     payload = {
