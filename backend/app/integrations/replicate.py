@@ -8,19 +8,17 @@ import asyncio
 from PIL import Image
 from io import BytesIO
 
-from config import get_settings
 
-
-def is_rate_limited(
-    ip: str, api_key: str, window_seconds: int, rate_limit: int
-) -> bool:
-    request_log = defaultdict(list)
-    now = time.time()
-    request_log[ip] = [t for t in request_log[ip] if now - t < window_seconds]
-    if len(request_log[ip]) >= rate_limit:
-        return True
-    request_log[ip].append(now)
-    return False
+# def is_rate_limited(
+#     ip: str, api_key: str, window_seconds: int, rate_limit: int
+# ) -> bool:
+#     request_log = defaultdict(list)
+#     now = time.time()
+#     request_log[ip] = [t for t in request_log[ip] if now - t < window_seconds]
+#     if len(request_log[ip]) >= rate_limit:
+#         return True
+#     request_log[ip].append(now)
+#     return False
 
 
 def download_image_from_url(url: str, index: int, image_dir: str) -> str:
@@ -40,24 +38,23 @@ def download_image_from_url(url: str, index: int, image_dir: str) -> str:
 
 async def generate_image(
     image_url: str,
-    api_key: str,
-    rate_limit: int,
+    # rate_limit: int,
     theme: str,
     room: str,
-    user_ip: str,
     img_dir: str,
-    window_seconds: int,
+    # window_seconds
+    # window_seconds: int,
 ):
-    if is_rate_limited(user_ip, api_key, window_seconds, rate_limit):
-        print(":x: Too many uploads. Please try again in 24 hours.")
-        return None
+    # if is_rate_limited(user_ip, api_key, window_seconds, rate_limit):
+    #     print(":x: Too many uploads. Please try again in 24 hours.")
+    #     return None
 
     prompt = (
         "a room for gaming with gaming computers, gaming consoles, and gaming chairs"
         if room.lower() == "gaming room"
         else f"a {theme.lower()} {room.lower()}"
     )
-
+    api_key = os.getenv("REPLICATE_API_KEY")
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Token {api_key}",
