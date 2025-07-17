@@ -1,0 +1,50 @@
+[
+  {
+    "_id": "style_modern",
+    "name": "모던",
+    "description": "기능적이고 깔끔한 선과 면으로 구성된 현대적인 스타일입니다.",
+    "image_url": "/interior-type/modern-interior-type.jpg"
+  },
+  {
+    "_id": "style_minimal",
+    "name": "미니멀",
+    "description": "불필요한 장식을 최소화하고 본질에 집중하는 스타일입니다.",
+    "image_url": "/interior-type/minimal-interior-type.jpg"
+  },
+  {
+    "_id": "style_natural",
+    "name": "내추럴",
+    "description": "나무, 흙 등 자연 소재를 사용하여 편안함을 주는 스타일입니다.",
+    "image_url": "/interior-type/natural-interior-type.jpg"
+  },
+  {
+    "_id": "style_nordic",
+    "name": "북유럽",
+    "description": "실용성과 따뜻한 감성이 조화된 밝고 아늑한 스타일입니다.",
+    "image_url": "/interior-type/nordic-interior-type.jpg"
+  },
+  {
+    "_id": "style_industrial",
+    "name": "인더스트리얼",
+    "description": "노출 콘크리트, 벽돌 등 거친 마감재를 그대로 살린 스타일입니다.",
+    "image_url": "/interior-type/industrial-interior-type.jpg"
+  },
+  {
+    "_id": "style_classic",
+    "name": "클래식",
+    "description": "우아한 곡선과 고급스러운 장식이 돋보이는 전통적인 스타일입니다.",
+    "image_url": "/interior-type/classic-interior-type.jpg"
+  },
+  {
+    "_id": "style_vintage",
+    "name": "빈티지",
+    "description": "과거의 디자인을 재현하여 향수를 불러일으키는 스타일입니다.",
+    "image_url": "/interior-type/vintage-interior-type.jpg"
+  },
+  {
+    "_id": "style_tribal",
+    "name": "트라이벌",
+    "description": "다채로운 색상을 과감하게 사용하여 생동감을 주는 스타일입니다.",
+    "image_url": "/interior-type/tribal-interior-type.jpg"
+  }
+]
