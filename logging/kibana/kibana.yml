@@ -1,0 +1,14 @@
+# Kibana 인스턴스의 이름 (클러스터 내 Kibana가 여러 개일 때 식별용)
+server.name: kibana
+
+# Kibana가 바인딩할 IP 주소
+# 0.0.0.0은 모든 인터페이스에서 접근 가능 (도커 환경에서 권장)
+server.host: "0.0.0.0"
+
+# Kibana가 데이터를 가져올 Elasticsearch의 주소
+# 도커 환경에서는 컨테이너 이름(elasticsearch)이 호스트처럼 작동
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+
+# Kibana 자체 모니터링 시,
+# Elasticsearch가 컨테이너 환경일 때 메트릭 수집 UI를 켜주는 설정
+monitoring.ui.container.elasticsearch.enabled: true
