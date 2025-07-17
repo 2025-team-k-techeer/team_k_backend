@@ -37,8 +37,7 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
     volumes:
       - mongodb:/data/db
-      - ./mongo-init:/docker-entrypoint-initdb.d
-
+      - ./scripts/mongo-init:/docker-entrypoint-initdb.d
     networks:
       - app-network
     hostname: mongo
@@ -70,7 +69,7 @@ services:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      - ./qdrant/data:/qdrant/storage
+      - .data/qdrant/data:/qdrant/storage
     networks:
       - app-network
 
@@ -100,6 +99,22 @@ services:
       - app-network
     restart: always
 
+  mongo-seed:
+    image: mongo
+    depends_on:
+      - mongo
+    volumes:
+      - ./scripts/mongo-init:/docker-entrypoint-initdb.d
+    entrypoint: [ "bash", "-c", "
+      sleep 10 && \
+      mongoimport --host mongo --db=interior_db --collection=danawa_products --file=/docker-entrypoint-initdb.d/danawa_products.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin && \
+      mongoimport --host mongo --db=interior_db --collection=interior_types --file=/docker-entrypoint-initdb.d/interior_types.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin
+    "]
+    environment:
+      - MONGO_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
+      - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+    networks:
+      - app-network
 
 networks:
   app-network:
