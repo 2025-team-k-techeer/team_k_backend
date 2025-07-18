@@ -16,6 +16,7 @@ services:
       - mongo
     networks:
       - app-network
+
     restart: always
     develop:
       watch:
@@ -26,7 +27,7 @@ services:
           target: /backend/requirements.txt
           action: rebuild
     command: >
-      python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+      python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
   mongo:
     image: mongo
     container_name: docker-mongo-1
@@ -41,6 +42,7 @@ services:
 
     networks:
       - app-network
+      - monitoring
     hostname: mongo
 
   mongo_express:
@@ -99,10 +101,58 @@ services:
     networks:
       - app-network
     restart: always
+  prometheus:
+    image: prom/prometheus:v2.45.6
+    container_name: prometheus-metrics
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - app-network
+      - monitoring
 
+  grafana:
+    image: grafana/grafana:9.5.20
+    user: root
+    volumes:
+      - ./monitoring/grafana_data:/etc/grafana/provisioning
+      - ./monitoring/grafana/data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - monitoring
 
+  redis_metrics:
+    image: oliver006/redis_exporter:v1.74.0-alpine
+    container_name: redis_exporter
+    ports:
+      - "9121:9121"
+    command: --redis.addr=redis:6379
+    networks:
+      - monitoring
+      - app-network
+    depends_on:
+      - redis
+  mongodb_metrics:
+    image: percona/mongodb_exporter:0.44.0
+    container_name: mongo_exporter
+    ports:
+      - "9216:9216"
+    command: --mongodb.uri=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017
+    networks:
+      - monitoring
+      - app-network
+    depends_on:
+      - mongo
+  
 networks:
   app-network:
+    driver: bridge
+    # seperate the app network from the monitoring network
+  monitoring:
     driver: bridge
 
 volumes:
