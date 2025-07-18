@@ -21,3 +21,8 @@ class UserResponse(BaseModel):
     last_login_at: Optional[datetime]
     deleted_at: Optional[datetime]
     updated_at: datetime
+
+
+class LoginUserBody(BaseModel):
+    email: str
+    password: str
