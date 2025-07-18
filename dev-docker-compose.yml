@@ -100,19 +100,32 @@ services:
     restart: always
 
   mongo-seed:
-    image: mongo
+    image: google/cloud-sdk:alpine # ✅ 약 300MB, gsutil 포함, 인증도 가능
     depends_on:
       - mongo
+    build:
+      context: .
+      dockerfile: scripts/mongo-init/mongo-seed.Dockerfile
     volumes:
+      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
       - ./scripts/mongo-init:/docker-entrypoint-initdb.d
-    entrypoint: [ "bash", "-c", "
-      sleep 10 && \
-      mongoimport --host mongo --db=interior_db --collection=danawa_products --file=/docker-entrypoint-initdb.d/danawa_products.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin && \
-      mongoimport --host mongo --db=interior_db --collection=interior_types --file=/docker-entrypoint-initdb.d/interior_types.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin
-     " ]
     environment:
+      - GCS_BUCKET=${GCS_BUCKET}
       - MONGO_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
       - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
+    entrypoint: >
+        bash -c "
+        gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS && \
+        echo '✅ GCS에서 JSON 다운로드 시작' && \
+        mkdir -p /data/db/collections && \
+        gsutil cp gs://${GCS_BUCKET}/mongo/danawa_products.json /data/db/collections/danawa_products.json && \
+        gsutil cp gs://${GCS_BUCKET}/mongo/interior_types.json /data/db/collections/interior_types.json && \
+        echo '✅ mongoimport 시작' && \
+        sleep 10 && \
+        mongoimport --host mongo --db=interior_db --collection=danawa_products --file=/data/db/collections/danawa_products.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin && \
+        mongoimport --host mongo --db=interior_db --collection=interior_types --file=/data/db/collections/interior_types.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin
+        "
     networks:
       - app-network
 
