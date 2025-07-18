@@ -1,7 +1,7 @@
-# 받는 주소: 이떄 다 열림
+# receiving address
 http.host: 0.0.0.0
 
-# 보내기: 우린 elasticsearch로 보내고 싶다
+# sending to elasticsearch address
 xpack.monitoring.elasticsearch.hosts: ["http://elasticsearch:9200"]
 xpack.monitoring.enabled: true
 xpack.security.enabled: false

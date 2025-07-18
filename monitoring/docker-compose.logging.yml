@@ -1,0 +1,127 @@
+
+
+services:
+
+  # traefik:
+  #   image: traefik:v2.9
+  #   command:
+  #     - "--api.insecure=true"
+  #     - "--providers.docker=true" 
+  #     - "--providers.docker.exposedbydefault=false"
+  #     - "--providers.docker.network=elk_elk"
+  #     - "--entrypoints.web.address=:80"
+  #     - "--log.level=INFO"
+  #     - "--accesslog=true"
+  #     - "--accesslog.filepath=/traefik/logs/access.log"
+  #     - "--accesslog.bufferingsize=100"
+  #     - "--accesslog.format=json"
+  #     - "--accesslog.fields.defaultmode=keep"
+  #     - "--accesslog.fields.headers.defaultmode=keep"
+  #     - "--accesslog.fields.headers.names.X-Forwarded-For=keep"
+  #     - "--api.dashboard=true"
+  #     - "--metrics.prometheus=true"
+  #     - "--metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000"
+  #     - "--metrics.prometheus.addEntryPointsLabels=true"
+  #     - "--metrics.prometheus.addServicesLabels=true"
+  #     - "--entryPoints.metrics.address=:8091"
+  #     - "--metrics.prometheus.entryPoint=metrics"
+  #   ports:
+  #     - "80:80"
+  #     - "8080:8080"
+  #   volumes:
+  #     - ./filebeats/filebeat.yml:/usr/share/filebeat/filebeat.yml # 파일 비트 설정값
+  #     - "/var/run/docker.sock:/var/run/docker.sock"
+  #     - "traefik_logs:/traefik/logs/"
+  #   networks:
+  #     - monitoring
+
+
+
+  # elasticsearch:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+
+  #   ports:
+  #     - "9200:9200"
+  #   volumes:
+  #     - esdata:/usr/share/elasticsearch/data
+  #     - ./elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml # 설정값
+
+  #   healthcheck:
+  #     test: curl -f http://localhost:9200 || exit 1
+  #     interval: 10s
+  #     timeout: 10s
+  #     retries: 10
+  #   networks:
+  #     - monitoring
+  # kibana:
+  #   image: docker.elastic.co/kibana/kibana:8.13.4
+  #   ports:
+  #     - "5601:5601"
+  #   depends_on:
+  #     - elasticsearch
+  #   volumes:
+  #     - kb_data:/usr/share/kibana/data
+  #     - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml
+  #   networks:
+  #     - monitoring
+  # filebeat:
+  #   image: elastic/filebeat:9.0.3
+  #   user: root
+  #   volumes:
+  #     - ./filebeats/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+  #     - ./logs:/logs:ro
+
+  #   depends_on:
+  #     - elasticsearch
+  #   command: filebeat -e --strict.perms=false
+  #   networks:
+  #     - monitoring
+  # logstash:
+  #   image: docker.elastic.co/logstash/logstash:8.13.4
+  #   ports:
+  #       - "5044:5044"
+  #       - "9600:9600"
+  #   depends_on:
+  #     elasticsearch:
+  #       condition: service_healthy
+  #     kibana:
+  #       condition: service_started
+
+  #   volumes:
+  #     - ./logstash:/usr/share/logstash/pipeline
+  #   networks:
+  #     - monitoring
+
+
+
+  prometheus:
+    image: prom/prometheus:v2.45.6
+    container_name: prometheus-metrics
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:9.5.20
+    user: root
+    volumes:
+      - ./grafana_data:/etc/grafana/provisioning
+      - ./grafana/data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - monitoring
+networks:
+  monitoring:
+    driver: bridge
+volumes: 
+  grafana_data:
+  kb_data:
+  esdata:
+  traefik_logs:
+

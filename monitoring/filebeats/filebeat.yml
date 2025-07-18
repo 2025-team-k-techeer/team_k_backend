@@ -2,7 +2,7 @@ filebeat.inputs:
   - type: filestream
     enabled: true
     paths:
-      - app/access.log
+      - /traefik/logs/access.log
     processors:
       - decode_json_fields:
           fields: ["message"]
