@@ -1,8 +1,9 @@
-.data/*
+
 
 # etc
 gcs_furniture_csv
 *.json
+.data/qdrant/data/collections/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
