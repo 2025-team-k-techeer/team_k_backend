@@ -1,0 +1,7 @@
+# receiving address
+http.host: 0.0.0.0
+
+# sending to elasticsearch address
+xpack.monitoring.elasticsearch.hosts: ["http://elasticsearch:9200"]
+xpack.monitoring.enabled: true
+xpack.security.enabled: false
