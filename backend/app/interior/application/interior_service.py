@@ -20,7 +20,7 @@ from app.config import get_settings
 
 settings = get_settings()
 
-GCS_BUCKET_NAME = "imageupload"
+GCS_BUCKET_NAME = "teamk-backend"  # 기존: "imageupload"
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 GCS_CREDENTIALS = os.path.abspath("wise-vault-465615-r2-f259679465ef.json")
 
@@ -68,7 +68,7 @@ class InteriorService:
 
             # 고유한 파일명 생성
             file_extension = Path(file.filename).suffix if file.filename else ".jpg"
-            unique_filename = f"{user_id}_{uuid.uuid4()}{file_extension}"
+            unique_filename = f"user_upload/{uuid.uuid4()}.{file_extension}"
             upload_path = self.upload_dir / unique_filename
 
             # 파일을 비동기로 저장
@@ -118,19 +118,22 @@ async def save_uploaded_image_only(file: UploadFile):
     """
     GCS에 파일을 저장하고, status/image_url/filename만 반환
     """
-    import os
-
-    print("GCS_CREDENTIALS 경로:", GCS_CREDENTIALS)
-    print("현재 작업 디렉토리:", os.getcwd())
-    print("파일 존재 여부:", os.path.exists(GCS_CREDENTIALS))
     client = storage.Client.from_service_account_json(GCS_CREDENTIALS)
     bucket = client.bucket(GCS_BUCKET_NAME)
     file_extension = file.filename.split(".")[-1] if "." in file.filename else "jpg"
-    unique_filename = f"{uuid.uuid4()}.{file_extension}"
+    unique_filename = f"user_upload/{uuid.uuid4()}.{file_extension}"
+
+    print("업로드 시도 중...")
+    print("버킷 이름:", GCS_BUCKET_NAME)
+    print("파일명:", unique_filename)
+
     blob = bucket.blob(unique_filename)
     content = await file.read()
     blob.upload_from_string(content, content_type=file.content_type)
+
     image_url = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{unique_filename}"
+    print("최종 URL:", image_url)
+
     return {"status": "success", "image_url": image_url, "filename": unique_filename}
 
 
