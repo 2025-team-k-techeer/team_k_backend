@@ -3,7 +3,7 @@
 from app.user.domain.repository.user_repo import IUserRepository
 from app.user.domain.user import User, Profile
 from fastapi import HTTPException
-from app.user.mongo import user_collection
+from app.mongo import user_collection
 from datetime import datetime
 
 
@@ -46,18 +46,17 @@ class UserRepository(IUserRepository):
             },
         )
 
-    async def get_users(self, page: int, items_per_page: int) -> tuple[int, list[User]]:
-        skip = (page - 1) * items_per_page
-        cursor = user_collection.find().skip(skip).limit(items_per_page)
-        users = [self._map_user(doc) async for doc in cursor]
-        total = await user_collection.count_documents({})
-
-        return total, users
-
     async def delete_user(self, id: str):
         result = await user_collection.delete_one({"_id": id})
         if result.deleted_count == 0:
             raise HTTPException(status_code=422)
+
+    async def get_users(self) -> list[User]:
+        cursor = user_collection.find({})
+        users = []
+        async for doc in cursor:
+            users.append(self._map_user(doc))
+        return users
 
     def _map_user(self, doc: dict) -> User:
         return User(

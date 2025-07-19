@@ -31,21 +31,4 @@ def decode_token(token: str) -> Optional[dict]:
         return None
 
 
-def get_current_user_id(access_token: str = Depends(lambda: None)):
-    from fastapi import Request
-
-    def _extract_token(request: Request):
-        token = request.cookies.get("access_token")
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="로그인이 필요합니다."
-            )
-        payload = decode_token(token)
-        if not payload or payload.get("type") != "access":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="유효하지 않은 토큰입니다.",
-            )
-        return payload["user_id"]
-
-    return Depends(_extract_token)
+# get_current_user_id 함수는 app.user.dependencies에서 관리됩니다
