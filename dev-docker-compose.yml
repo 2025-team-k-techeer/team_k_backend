@@ -37,8 +37,7 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
     volumes:
       - mongodb:/data/db
-      - ./mongo-init:/docker-entrypoint-initdb.d
-
+      - ./scripts/mongo-init:/docker-entrypoint-initdb.d
     networks:
       - app-network
     hostname: mongo
@@ -70,7 +69,7 @@ services:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      - ./qdrant/data:/qdrant/storage
+      - .data/qdrant/data:/qdrant/storage
     networks:
       - app-network
 
@@ -100,7 +99,56 @@ services:
       - app-network
     restart: always
 
+  mongo-seed:
+    image: google/cloud-sdk:alpine # ✅ 약 300MB, gsutil 포함, 인증도 가능
+    depends_on:
+      - mongo
+    build:
+      context: .
+      dockerfile: scripts/mongo-init/mongo-seed.Dockerfile
+    volumes:
+      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+      - ./scripts/mongo-init:/docker-entrypoint-initdb.d
+    environment:
+      - GCS_BUCKET=${GCS_BUCKET}
+      - MONGO_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
+      - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
+    entrypoint: >
+        bash -c "
+        gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS && \
+        echo '✅ GCS에서 JSON 다운로드 시작' && \
+        mkdir -p /data/db/collections && \
+        gsutil cp gs://${GCS_BUCKET}/mongo/danawa_products.json /data/db/collections/danawa_products.json && \
+        gsutil cp gs://${GCS_BUCKET}/mongo/interior_types.json /data/db/collections/interior_types.json && \
+        echo '✅ mongoimport 시작' && \
+        sleep 10 && \
+        mongoimport --host mongo --db=interior_db --collection=danawa_products --file=/data/db/collections/danawa_products.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin && \
+        mongoimport --host mongo --db=interior_db --collection=interior_types --file=/data/db/collections/interior_types.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin
+        "
+    networks:
+      - app-network
 
+  qdrant-seed:
+    build:
+      context: .
+      dockerfile: scripts/qdrant-init/qdrant-seed.Dockerfile
+    depends_on:
+      - qdrant
+    volumes:
+      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+      - ./scripts/qdrant-init/upload_qdrant.py:/upload_qdrant.py
+    environment:
+      - GCS_BUCKET=${GCS_BUCKET}
+      - GCS_QDRANT_EMBEDDINGS_JSON=${GCS_QDRANT_EMBEDDINGS_JSON}
+      - QDRANT_URL=${QDRANT_URL}
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION}
+      - QDRANT_VECTOR_SIZE=${QDRANT_VECTOR_SIZE}
+      - QDRANT_DISTANCE=${QDRANT_DISTANCE}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
+    entrypoint: [ "python", "/upload_qdrant.py" ]
+    networks:
+      - app-network
 networks:
   app-network:
     driver: bridge

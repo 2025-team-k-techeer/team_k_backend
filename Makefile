@@ -12,3 +12,9 @@ docker-dev-logs:
 docker-dev-sh:
 	docker exec -it fastapi bash
 
+docker-dev-mongo-sh:
+	docker exec -it mongo bash
+	
+docker-dev-down-v:
+	docker compose -f dev-docker-compose.yml down -v
+
