@@ -77,11 +77,32 @@
 # app/main.py
 
 # app/main.py
+import os
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from app.user.interface.controller import user_controller
+from app.interior.interface.controller import interior_controller
 
 app = FastAPI()
 
-# 라우터 등록
+# uploads 디렉토리가 없으면 생성
+uploads_dir = "uploads"
+if not os.path.exists(uploads_dir):
+    os.makedirs(uploads_dir, exist_ok=True)
 
+# 정적 파일 서빙 설정 (명세서 요구사항)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+
+# 라우터 등록
 app.include_router(user_controller.router)
+app.include_router(interior_controller.router)
+
+
+@app.get("/")
+async def root():
+    return {"message": "AI 인테리어 스타일러 API", "status": "running"}
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "message": "서버가 정상적으로 실행 중입니다"}

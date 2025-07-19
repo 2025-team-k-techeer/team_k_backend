@@ -7,6 +7,7 @@ services:
       - "5678:5678"  # Debugging port
     volumes:
       - ./backend:/backend
+      - ./wise-vault-465615-r2-f259679465ef.json:/backend/wise-vault-465615-r2-f259679465ef.json
     environment:
       - MONGO_URI=${MONGO_URI}
       - debug=${DEBUG}
