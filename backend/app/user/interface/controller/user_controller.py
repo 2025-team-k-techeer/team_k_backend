@@ -103,6 +103,7 @@ async def get_mypage(request: Request):
     if not user:
         return {"status": "error", "message": "사용자를 찾을 수 없습니다."}, 404
     user_info = {
+        "_id": user.get("_id"),  # id 가져와야함
         "name": user.get("name"),
         "email": user.get("email"),
         "profile_image_url": user.get("profile_image_url"),
