@@ -8,6 +8,7 @@ import aiofiles
 from fastapi import UploadFile, HTTPException
 from PIL import Image as PILImage
 import io
+from google.cloud import storage
 
 from app.interior.domain.interior import (
     InteriorProject,
@@ -18,6 +19,10 @@ from app.interior.domain.repository.interior_repo import InteriorRepository
 from app.config import get_settings
 
 settings = get_settings()
+
+GCS_BUCKET_NAME = "imageupload"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+GCS_CREDENTIALS = os.path.abspath("wise-vault-465615-r2-f259679465ef.json")
 
 
 class InteriorService:
@@ -108,37 +113,54 @@ class InteriorService:
                 },
             )
 
-    async def _process_interior_async(self, project_id: str):
-        """백그라운드에서 인테리어를 비동기로 처리합니다."""
-        try:
-            # 상태를 processing으로 업데이트
-            await self.interior_repository.update_project_status(
-                project_id, "processing"
-            )
 
-            # 프로젝트 정보 가져오기
-            project = await self.interior_repository.find_project_by_id(project_id)
-            if not project:
-                return
+async def save_uploaded_image_only(file: UploadFile):
+    """
+    GCS에 파일을 저장하고, status/image_url/filename만 반환
+    """
+    import os
 
-            # TODO: AI 인테리어 생성 (RoomGPT, Stable Diffusion 등)
-            # generated_image_url = await self._generate_interior_ai(project)
+    print("GCS_CREDENTIALS 경로:", GCS_CREDENTIALS)
+    print("현재 작업 디렉토리:", os.getcwd())
+    print("파일 존재 여부:", os.path.exists(GCS_CREDENTIALS))
+    client = storage.Client.from_service_account_json(GCS_CREDENTIALS)
+    bucket = client.bucket(GCS_BUCKET_NAME)
+    file_extension = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    unique_filename = f"{uuid.uuid4()}.{file_extension}"
+    blob = bucket.blob(unique_filename)
+    content = await file.read()
+    blob.upload_from_string(content, content_type=file.content_type)
+    image_url = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{unique_filename}"
+    return {"status": "success", "image_url": image_url, "filename": unique_filename}
 
-            # TODO: 가구 감지 (YOLO, BLIP)
-            # furniture_detected = await self._detect_furniture(project)
 
-            # TODO: AR 씬 생성
-            # ar_scene_url = await self._create_ar_scene(project)
+async def _process_interior_async(self, project_id: str):
+    """백그라운드에서 인테리어를 비동기로 처리합니다."""
+    try:
+        # 상태를 processing으로 업데이트
+        await self.interior_repository.update_project_status(project_id, "processing")
 
-            # 임시로 성공 상태로 업데이트
-            await self.interior_repository.update_project_status(
-                project_id, "completed"
-            )
+        # 프로젝트 정보 가져오기
+        project = await self.interior_repository.find_project_by_id(project_id)
+        if not project:
+            return
 
-        except Exception as e:
-            # 오류 발생 시 상태를 failed로 업데이트
-            await self.interior_repository.update_project_status(project_id, "failed")
-            print(f"인테리어 처리 중 오류 발생: {str(e)}")
+        # TODO: AI 인테리어 생성 (RoomGPT, Stable Diffusion 등)
+        # generated_image_url = await self._generate_interior_ai(project)
+
+        # TODO: 가구 감지 (YOLO, BLIP)
+        # furniture_detected = await self._detect_furniture(project)
+
+        # TODO: AR 씬 생성
+        # ar_scene_url = await self._create_ar_scene(project)
+
+        # 임시로 성공 상태로 업데이트
+        await self.interior_repository.update_project_status(project_id, "completed")
+
+    except Exception as e:
+        # 오류 발생 시 상태를 failed로 업데이트
+        await self.interior_repository.update_project_status(project_id, "failed")
+        print(f"인테리어 처리 중 오류 발생: {str(e)}")
 
     async def _generate_interior_ai(self, project: InteriorProject) -> str:
         """AI를 사용하여 인테리어 이미지를 생성합니다."""

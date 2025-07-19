@@ -30,8 +30,6 @@ class ImageUploadResponse(BaseModel):
     status: str
     image_url: str
     filename: str
-    project_id: Optional[str] = None
-    message: str
 
 
 class InteriorGenerationRequest(BaseModel):
