@@ -125,3 +125,25 @@ class UserLibraryInterior(BaseModel):
 class UserLibraryResponse(BaseModel):
     status: str
     interiors: List[UserLibraryInterior]
+
+
+# 이미지 업로드 관련 스키마
+class ImageUploadResponse(BaseModel):
+    """이미지 업로드 응답 스키마"""
+
+    status: str
+    message: str
+    data: dict
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "status": "success",
+                "message": "이미지가 성공적으로 업로드되었습니다.",
+                "data": {
+                    "public_url": "https://storage.googleapis.com/team-k-interior-images/interior/abc123def456.jpg",
+                    "filename": "abc123def456.jpg",
+                    "size": 1024000,
+                },
+            }
+        }
