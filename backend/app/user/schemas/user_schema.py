@@ -13,7 +13,7 @@ class CreateUserBody(BaseModel):
 
 # 응답 형식 사용자에게 이 정보를 보여줌
 class UserResponse(BaseModel):
-    _id: str
+    id: str
     email: EmailStr
     name: str
     profile_image_url: Optional[str]
@@ -23,6 +23,23 @@ class UserResponse(BaseModel):
     updated_at: datetime
 
 
+class ProfileResponse(BaseModel):
+    id: str
+    name: str
+    email: EmailStr
+    profile_image_url: Optional[str] = None
+
+
 class LoginUserBody(BaseModel):
     email: str
     password: str
+
+
+class TokenResponse(BaseModel):
+    """OAuth2 토큰 응답 스키마"""
+
+    access_token: str
+    refresh_token: str
+    token_type: str
+    expires_in: int
+    user: UserResponse

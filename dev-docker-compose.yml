@@ -26,7 +26,7 @@ services:
           target: /backend/requirements.txt
           action: rebuild
     command: >
-      python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+      python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
   mongo:
     image: mongo
     container_name: docker-mongo-1
