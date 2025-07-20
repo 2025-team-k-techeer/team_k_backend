@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     # Replicate API key
     REPLICATE_API_KEY: str
 
+    # Google Cloud Storage settings
+    GCS_BUCKET: str
+    GOOGLE_APPLICATION_CREDENTIALS: str
+
     # database_password: str
     # jwt_secret: str
     # email_password: str

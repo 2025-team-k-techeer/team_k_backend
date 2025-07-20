@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from app.user.dependencies import get_current_user_id_bearer
-from app.interior.dependencies import get_interior_service
+from app.interior.dependencies import get_interior_service, get_gcs_service
 from app.interior.application.interior_service import InteriorService
+from app.integrations.gcs import GCSService
 from app.interior.schemas.interior_schema import (
     InteriorGenerateRequest,
     InteriorGenerateResponse,
@@ -11,9 +12,9 @@ from app.interior.schemas.interior_schema import (
     SaveInteriorRequest,
     SaveInteriorResponse,
     UserLibraryResponse,
+    ImageUploadResponse,
 )
 from app.interior.schemas.mappers import (
-    domain_to_interior_generate_response,
     interior_type_to_style_info_item,
     interior_type_to_style_info_response,
     domain_to_user_library_interior,
@@ -25,6 +26,56 @@ router = APIRouter(prefix="/interiors", tags=["Interior Api"])
 # JWT 토큰 검증은 user 모듈의 의존성 함수를 사용합니다
 # 쿠키 기반: get_current_user_id
 # Bearer 토큰 기반: get_current_user_id_bearer
+
+
+@router.post("/image", response_model=ImageUploadResponse)
+async def upload_image(
+    image: UploadFile = File(...),
+    user_id: str = Depends(get_current_user_id_bearer),
+    gcs_service: GCSService = Depends(get_gcs_service),
+):
+    """
+    이미지 파일을 GCS에 업로드하고 공개 URL 반환
+
+    - 이미지는 항상 JPG로 변환되어 저장됩니다
+    - 파일명은 SHA256 기반으로 암호화되어 URL이 유추되지 않습니다
+    - 업로드된 이미지의 공개 URL과 실제 저장된 파일명을 반환합니다
+    """
+    try:
+        # 파일 타입 검증
+        if not image.content_type or not image.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=400, detail="이미지 파일만 업로드 가능합니다."
+            )
+
+        # 파일 크기 검증 (10MB 제한)
+        if image.size and image.size > 10 * 1024 * 1024:
+            raise HTTPException(
+                status_code=400, detail="파일 크기는 10MB를 초과할 수 없습니다."
+            )
+
+        # 파일 내용 읽기
+        image_data = await image.read()
+
+        # GCS에 업로드
+        upload_result = await gcs_service.upload_image(
+            image_data=image_data,
+            original_filename=image.filename or "unknown.jpg",
+            user_id=user_id,
+        )
+
+        return ImageUploadResponse(
+            status="success",
+            message="이미지가 성공적으로 업로드되었습니다.",
+            data=upload_result,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"이미지 업로드 중 오류가 발생했습니다: {str(e)}"
+        )
 
 
 @router.post("/generate", response_model=InteriorGenerateResponse)
@@ -107,7 +158,7 @@ async def get_all_style_info(
         }
 
 
-@router.post("/save-interior", response_model=SaveInteriorResponse)
+@router.post("/my-interior", response_model=SaveInteriorResponse)
 async def save_interior(
     request: SaveInteriorRequest,
     user_id: str = Depends(get_current_user_id_bearer),
