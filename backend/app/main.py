@@ -79,9 +79,10 @@
 # app/main.py
 from fastapi import FastAPI
 from app.user.interface.controller import user_controller
+from app.interior.interface.controller import interior_controller
 
 app = FastAPI()
 
 # 라우터 등록
-
 app.include_router(user_controller.router)
+app.include_router(interior_controller.router)
