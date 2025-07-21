@@ -1,4 +1,35 @@
 services:
+  traefik:
+    image: traefik:v2.9
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true" 
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=app-network"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=INFO"
+      - "--accesslog=true"
+      - "--accesslog.filepath=/traefik/logs/access.log"
+      - "--accesslog.bufferingsize=100"
+      - "--accesslog.format=json"
+      - "--accesslog.fields.defaultmode=keep"
+      - "--accesslog.fields.headers.defaultmode=keep"
+      - "--accesslog.fields.headers.names.X-Forwarded-For=keep"
+      - "--api.dashboard=true"
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000"
+      - "--metrics.prometheus.addEntryPointsLabels=true"
+      - "--metrics.prometheus.addServicesLabels=true"
+      - "--entryPoints.metrics.address=:8091"
+      - "--metrics.prometheus.entryPoint=metrics"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - ./monitoring/traefik_logs:/traefik/logs/
+    networks:
+      - app-network
   fastapi:
     build: ./backend
     container_name: fastapi
@@ -171,7 +202,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - .env
     depends_on:
       - loki
     volumes:
