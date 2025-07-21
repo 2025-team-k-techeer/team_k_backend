@@ -13,6 +13,7 @@ from app.utils.jwt_utils import decode_token, create_access_token, create_refres
 from app.user.dependencies import (
     get_current_user_id,
     get_user_service,
+    get_current_user_id_bearer,
 )
 from app.interior.dependencies import get_interior_service
 from app.interior.application.interior_service import InteriorService
@@ -20,7 +21,7 @@ from app.interior.application.interior_service import InteriorService
 router = APIRouter(prefix="/users", tags=["User Api"])
 
 # OAuth2 스키마 정의
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/login")
 
 
 class Profile(BaseModel):
@@ -47,38 +48,38 @@ async def create_user(
         raise HTTPException(status_code=500, detail=f"서버 내부 오류: {str(e)}")
 
 
+# @router.post("/login")
+# async def login_user(
+#     user: LoginUserBody,
+#     response: Response,
+#     user_service: UserService = Depends(get_user_service),
+# ):
+#     """사용자 로그인 (쿠키 기반)"""
+#     try:
+#         access_token, refresh_token = await user_service.login_user(
+#             user.email, user.password
+#         )
+#         # 쿠키에 토큰 저장
+#         response.set_cookie(
+#             key="access_token", value=access_token, httponly=True, secure=False
+#         )
+#         response.set_cookie(
+#             key="refresh_token", value=refresh_token, httponly=True, secure=False
+#         )
+#         return {
+#             "status": "success",
+#             "message": "로그인 성공",
+#             "access_token": access_token,
+#             "refresh_token": refresh_token,
+#         }
+#     except ValueError as e:
+#         raise HTTPException(status_code=400, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"서버 내부 오류: {str(e)}")
+
+
 @router.post("/login")
-async def login_user(
-    user: LoginUserBody,
-    response: Response,
-    user_service: UserService = Depends(get_user_service),
-):
-    """사용자 로그인 (쿠키 기반)"""
-    try:
-        access_token, refresh_token = await user_service.login_user(
-            user.email, user.password
-        )
-        # 쿠키에 토큰 저장
-        response.set_cookie(
-            key="access_token", value=access_token, httponly=True, secure=False
-        )
-        response.set_cookie(
-            key="refresh_token", value=refresh_token, httponly=True, secure=False
-        )
-        return {
-            "status": "success",
-            "message": "로그인 성공",
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-        }
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"서버 내부 오류: {str(e)}")
-
-
-@router.post("/token")
-async def login_for_access_token(
+async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     user_service: UserService = Depends(get_user_service),
 ):
@@ -112,14 +113,23 @@ async def logout_user(response: Response):
 
 
 @router.post("/token/verify")
-async def verify_token(user_id: str = Depends(get_current_user_id)):
-    """토큰 검증"""
+async def verify_token(
+    user_id: str = Depends(get_current_user_id_bearer),
+):  # Bearer 토큰 기반으로 변경
+    """토큰 검증 (Bearer 토큰 기반)"""
     return {"valid": True, "user_id": user_id}
 
 
+class RefreshTokenBody(BaseModel):
+    refresh_token: str
+
+
 @router.post("/token/refresh")
-async def refresh_access_token(refresh_token: str = Cookie(None)):
-    """액세스 토큰 갱신 (쿠키 기반)"""
+async def refresh_access_token(
+    body: RefreshTokenBody,
+):
+    """액세스 토큰 갱신 (Bearer 토큰 기반, request body로 받음)"""
+    refresh_token = body.refresh_token
     if not refresh_token:
         raise HTTPException(status_code=401, detail="리프레시 토큰이 필요합니다.")
 
@@ -127,10 +137,6 @@ async def refresh_access_token(refresh_token: str = Cookie(None)):
         payload = decode_token(refresh_token)
         if payload and payload.get("type") == "refresh":
             new_access_token = create_access_token(payload["user_id"])
-            response = Response()
-            response.set_cookie(
-                key="access_token", value=new_access_token, httponly=True, secure=False
-            )
             return {"access_token": new_access_token}
         else:
             raise HTTPException(
@@ -173,7 +179,7 @@ async def refresh_access_token_bearer(
 
 @router.get("/mypage")
 async def get_mypage(
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_current_user_id_bearer),  # Bearer 토큰 기반 인증
     user_service: UserService = Depends(get_user_service),
     interior_service: InteriorService = Depends(get_interior_service),
 ):
