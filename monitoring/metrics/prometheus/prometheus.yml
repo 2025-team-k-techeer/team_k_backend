@@ -10,7 +10,7 @@ scrape_configs:
       - targets: ["fastapi:8000"] # FastAPI 서비스의 메트릭
   - job_name: "redis" #Redis 메트릭 수집
     static_configs:
-      - targets: ["redis_metrics:6379"] # Redis 서비스의 메트릭
+      - targets: ["redis_exporter:9121"] # Redis 서비스의 메트릭
   # - job_name: "rabbitmq" #RabbitMQ 메트릭 수집
   #   static_configs:
   #     - targets: ["rabbitmq:15692"] # RabbitMQ 서비스의 메트릭
