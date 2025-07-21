@@ -6,7 +6,7 @@ services:
       - "--api.insecure=true"
       - "--providers.docker=true" 
       - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=monitoring-network"
+      - "--providers.docker.network=app-network"
       - "--entrypoints.web.address=:80"
       - "--log.level=INFO"
       - "--accesslog=true"
@@ -30,8 +30,8 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - "./traefik_logs:/traefik/logs/"
     networks:
-      - monitoring-network
-  
+      - app-network
+
 
   loki:
     image: grafana/loki:latest
@@ -42,8 +42,8 @@ services:
       - ./logging/traefik_logs:/logs
     command: -config.file=/etc/loki/local-config.yaml
     networks:
-      - monitoring-network
-  
+      - app-network
+
 
   grafana:
     image: grafana/grafana:latest
@@ -56,8 +56,8 @@ services:
     volumes:
       - grafana-storage:/var/lib/grafana
     networks:
-      - monitoring-network
-  
+      - app-network
+
 
   promtail:
     image: grafana/promtail:latest
@@ -73,8 +73,29 @@ services:
     depends_on:
       - loki
     networks:
-      - monitoring-network
-  
+      - app-network
+
+
+  redis_metrics:
+    image: oliver006/redis_exporter:v1.74.0-alpine
+    container_name: redis_exporter
+    ports:
+      - "9121:9121"
+    command: --redis.addr=redis:6379
+    networks:
+      - app-network
+
+
+  mongodb_metrics:
+    image: percona/mongodb_exporter:0.44.0
+    container_name: mongo_exporter
+    ports:
+      - "9216:9216"
+    command: --mongodb.uri=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017
+    networks:
+      - app-network
+
+
 
 
 
@@ -88,12 +109,13 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
     networks:
-      - monitoring-network
+      - app-network
 
 
 volumes:
   grafana-storage:
 
 networks:
-  monitoring-network:
+  app-network:
     driver: bridge
+ 

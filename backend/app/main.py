@@ -135,11 +135,7 @@ async def add_logging_middleware(request: Request, call_next):
     반환값:
     - response: FastAPI 응답 객체.
     """
-    logger = logging.getLogger("uvicorn.access")
-    logger.setLevel(logging.INFO)
-    handler = logging.FileHandler("./app/logs/fastapi.log")
-    handler.setFormatter(CustomJsonFormatter())
-    logger.addHandler(handler)
+
     response = await call_next(request)
     log_data = {
         "method": request.method,

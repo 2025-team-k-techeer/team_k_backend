@@ -19,11 +19,11 @@ scrape_configs:
       - targets: ["localhost"] # 로그를 수집할 대상 서버
         labels:
           app: mongodb # 애플리케이션 이름 (MongoDB)
-          __path__: /var/lib/docker/containers/8624f8afd19bc2a75620bdc57738affc317f80692910380d572a08bad740eb75/*.log
+          __path__: /var/lib/docker/containers/*/*.log
       - targets: ["localhost"] # 로그를 수집할 대상 서버
         labels:
           app: redis # 애플리케이션 이름 (Redis)
-          __path__: /var/lib/docker/containers/6adc0ff8b226c719f7e87230e7e79b10d663cf368d9ae0384c274256a5bbd45f/*.log
+          __path__: /var/lib/docker/containers/*/*.log
 
     pipeline_stages:
       - json: # JSON 형식으로 정의
