@@ -1,35 +1,4 @@
 services:
-  traefik:
-    image: traefik:v2.9
-    command:
-      - "--api.insecure=true"
-      - "--providers.docker=true" 
-      - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=app-network"
-      - "--entrypoints.web.address=:80"
-      - "--log.level=INFO"
-      - "--accesslog=true"
-      - "--accesslog.filepath=/traefik/logs/access.log"
-      - "--accesslog.bufferingsize=100"
-      - "--accesslog.format=json"
-      - "--accesslog.fields.defaultmode=keep"
-      - "--accesslog.fields.headers.defaultmode=keep"
-      - "--accesslog.fields.headers.names.X-Forwarded-For=keep"
-      - "--api.dashboard=true"
-      - "--metrics.prometheus=true"
-      - "--metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000"
-      - "--metrics.prometheus.addEntryPointsLabels=true"
-      - "--metrics.prometheus.addServicesLabels=true"
-      - "--entryPoints.metrics.address=:8091"
-      - "--metrics.prometheus.entryPoint=metrics"
-    ports:
-      - "80:80"
-      - "8080:8080"
-    volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock"
-      - ./monitoring/traefik_logs:/traefik/logs/
-    networks:
-      - app-network
   fastapi:
     build: ./backend
     container_name: fastapi
@@ -48,7 +17,6 @@ services:
       - mongo
     networks:
       - app-network
-
     restart: always
     develop:
       watch:
@@ -92,7 +60,6 @@ services:
       - ME_CONFIG_BASICAUTH_PASSWORD=${MONGO_EXPRESS_PASS}
     networks:
       - app-network
-
     hostname: mongo-express
 
   qdrant:
@@ -107,7 +74,6 @@ services:
     networks:
       - app-network
 
-
   redis:
     image: redis:8.0
     container_name: redis
@@ -117,7 +83,6 @@ services:
       - redis-data:/data
     networks:
       - app-network
-
     restart: always
 
   rabbitmq:
@@ -185,83 +150,6 @@ services:
     entrypoint: [ "python", "/upload_qdrant.py" ]
     networks:
       - app-network
-  loki:
-    image: grafana/loki:latest
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./monitoring/logging/loki-config.yaml:/etc/loki/local-config.yaml
-      - ./monitoring/logging/traefik_logs:/logs
-    command: -config.file=/etc/loki/local-config.yaml
-    networks:
-      - app-network
-
-
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
-    environment:
-      - .env
-    depends_on:
-      - loki
-    volumes:
-      - ./monitoring/logging/grafana-storage:/var/lib/grafana
-    networks:
-      - app-network
-
-
-  promtail:
-    image: grafana/promtail:latest
-    volumes:
-      - ./monitoring/logging/promtail-config.yaml:/etc/promtail/config.yaml
-      - ./monitoring/logging/traefik_logs/access.log:/logs/access.log
-      - ./backend/app/logs/fastapi.log:/logs/fastapi.log
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-    command: -config.file=/etc/promtail/config.yaml -config.expand-env=true
-    ports:
-      - "9080:9080"
-    depends_on:
-      - loki
-    networks:
-      - app-network
-
-
-  redis_metrics:
-    image: oliver006/redis_exporter:v1.74.0-alpine
-    container_name: redis_exporter
-    ports:
-      - "9121:9121"
-    command: --redis.addr=redis:6379
-    networks:
-      - app-network
-
-
-  mongodb_metrics:
-    image: percona/mongodb_exporter:0.44.0
-    container_name: mongo_exporter
-    ports:
-      - "9216:9216"
-    command: --mongodb.uri=mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017
-    networks:
-      - app-network
-
-
-
-
-
-  prometheus:
-    image: prom/prometheus:v2.45.6
-    container_name: prometheus-metrics
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/metrics/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-    networks:
-      - app-network
 networks:
   app-network:
     driver: bridge
@@ -270,5 +158,3 @@ volumes:
   mongodb:
   redis-data:
   rabbitmq-data:
-
-  
