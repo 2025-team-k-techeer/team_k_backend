@@ -13,6 +13,7 @@ from app.utils.jwt_utils import decode_token, create_access_token, create_refres
 from app.user.dependencies import (
     get_current_user_id,
     get_user_service,
+    get_current_user_id_bearer,
 )
 from app.interior.dependencies import get_interior_service
 from app.interior.application.interior_service import InteriorService
@@ -173,7 +174,7 @@ async def refresh_access_token_bearer(
 
 @router.get("/mypage")
 async def get_mypage(
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(get_current_user_id_bearer),  # Bearer 토큰 기반 인증
     user_service: UserService = Depends(get_user_service),
     interior_service: InteriorService = Depends(get_interior_service),
 ):
