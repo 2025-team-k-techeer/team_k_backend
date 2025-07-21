@@ -1,0 +1,42 @@
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # 로그 수잡 대상 및 라벨 설정
+  - job_name: apps # 애플리케이션 로그 수집 작업 이름
+    static_configs:
+      - targets: ["localhost"] # 로그를 수집할 대상 서버
+        labels:
+          app: traefik # 애플리케이션 이름 (Traefik)
+          __path__: /logs/access.log # Traefik의 액세스 로그 도커 파일상 경로
+      - targets: ["localhost"] # 로그를 수집할 대상 서버
+        labels:
+          app: fastapi # 애플리케이션 이름 (FastAPI)
+          __path__: /logs/fastapi.log # FastAPI의 로그 파일 도커 파일상 경로
+      - targets: ["localhost"] # 로그를 수집할 대상 서버
+        labels:
+          app: mongodb # 애플리케이션 이름 (MongoDB)
+          __path__: /var/lib/docker/containers/8624f8afd19bc2a75620bdc57738affc317f80692910380d572a08bad740eb75/*.log
+      - targets: ["localhost"] # 로그를 수집할 대상 서버
+        labels:
+          app: redis # 애플리케이션 이름 (Redis)
+          __path__: /var/lib/docker/containers/6adc0ff8b226c719f7e87230e7e79b10d663cf368d9ae0384c274256a5bbd45f/*.log
+
+    pipeline_stages:
+      - json: # JSON 형식으로 정의
+          expressions:
+            level: level # 로그 레벨 필드 추출
+            msg: msg # 로그 메시지 필드 추출
+            asctime: time # 로그 시간 필드 추출 (asctime 필드 사용)
+      - labels: # 라벨 추가 단계
+          level: level # 로그 레벨을 라벨로 추가
+          app: app # 애플리케이션 이름을 라벨로 추가
+      - output: # 출력 설정 단계
+          source: msg # 로그 메시지를 출력 소스로 사용
+          timestamp:
+            source: time # 시간 필드를 타임스탬프로 사용
+            format: RFC3339 # 시간 형식 지정 (RFC3339)
+            location: UTC # 시간대를 UTC로 설정
