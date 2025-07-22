@@ -13,27 +13,11 @@ from app.interior.schemas.interior_schema import (
 
 
 def domain_to_interior_generate_response(
-    interior: Interior, furnitures: List[FurnitureDetected], products_map: dict
+    interior: Interior,
+    furnitures: List[FurnitureDetected],
 ) -> InteriorGenerateResponse:
     detected_parts_response = []
     for furniture in furnitures:
-        danawa_products = []
-        for pid in furniture.danawa_products_id:
-            product = products_map.get(pid)
-            if product:
-                danawa_products.append(
-                    DanawaProductSchema(
-                        id=product.id,
-                        name=product.product_name,
-                        product_url=product.product_url,
-                        image_url=product.image_url,
-                        dimensions=DimensionsSchema(
-                            width_cm=product.dimensions.width_cm,
-                            depth_cm=product.dimensions.depth_cm,
-                            height_cm=product.dimensions.height_cm,
-                        ),
-                    )
-                )
         detected_parts_response.append(
             DetectedPart(
                 id=furniture.id,
@@ -43,8 +27,12 @@ def domain_to_interior_generate_response(
                     width=furniture.bounding_box.width,
                     height=furniture.bounding_box.height,
                 ),
-                danawa_products=danawa_products,
+                danawa_products=[
+                    DanawaProductSchema(**vars(p))
+                    for p in (furniture.danawa_products or [])
+                ],
                 created_at=furniture.created_at,
+                label=furniture.label,
             )
         )
     return InteriorGenerateResponse(

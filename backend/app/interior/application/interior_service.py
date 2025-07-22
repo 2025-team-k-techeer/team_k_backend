@@ -12,12 +12,54 @@ from app.interior.domain.interior import (
 from app.interior.domain.repository.interior_repository import InteriorRepository
 from app.integrations.replicate import ReplicateService
 from app.interior.schemas.mappers import domain_to_interior_generate_response
+from app.config import get_settings
+
+
+# Celery 및 Qdrant 연동 import (분리된 태스크)
+from app.interior.tasks.qdrant_tasks import qdrant_search_task
+
+import httpx
+import uuid
+import asyncio
+import time
+
+settings = get_settings()
+
+YOLO_CLIP_API_URL = "https://yolo-clip-api-604858116968.asia-northeast3.run.app/process"
+QDRANT_SEARCH_URL = settings.QDRANT_SEARCH_URL
+
+
+# Qdrant 유사도 검색 Celery 태스크
+def qdrant_search(embedding, top_k=3):
+    import requests
+
+    payload = {"vector": embedding, "top": top_k, "with_payload": True}
+    resp = requests.post(QDRANT_SEARCH_URL, json=payload, timeout=10)
+    resp.raise_for_status()
+    return resp.json()
 
 
 def now(utc=True):
     if utc:
         return datetime.utcnow()
     return datetime.now()
+
+
+def qdrant_payload_to_danawa_product(payload):
+    return DanawaProduct(
+        id=payload.get("id", ""),
+        label=payload.get("label", ""),
+        product_name=payload.get("product_name", ""),
+        product_url=payload.get("product_url", ""),
+        image_url=payload.get("image_url", ""),
+        dimensions=Dimensions(
+            width_cm=payload.get("width_cm", 0),
+            depth_cm=payload.get("depth_cm", 0),
+            height_cm=payload.get("height_cm", 0),
+        ),
+        created_at=payload.get("created_at"),
+        updated_at=payload.get("updated_at"),
+    )
 
 
 class InteriorService:
@@ -38,54 +80,107 @@ class InteriorService:
         prompt: str,
     ):
         """
-        인테리어 이미지 생성 및 가구 인식
+        인테리어 이미지 생성 및 가구 인식 (YOLO+CLIP → Celery로 Qdrant 병렬 검색, 내부 polling)
         """
         try:
-            # 1. AI 서비스를 통한 이미지 생성
+            # 1. 인테리어 이미지 생성 (Replicate 등)
             generated_image_url = await self._generate_interior_image(
                 image_url, room_type, style, prompt
             )
 
-            # 2. 가구 인식 (YOLO 모델 사용)
-            furniture_id = str(uuid4())
-            furniture = FurnitureDetected(
-                id=furniture_id,
-                interior_id="",  # 나중에 설정
-                label="desk",
-                bounding_box=BoundingBox(x=120, y=200, width=280, height=160),
-                danawa_products_id=["danawa_desk_001", "danawa_desk_002"],
-                created_at=now(),
-            )
-            furnitures = [furniture]
+            # 2. YOLO+CLIP 서버에 생성된 이미지 URL 전달하여 객체 인식 및 임베딩 추출
+            async with httpx.AsyncClient() as client:
+                yolo_resp = await client.post(
+                    YOLO_CLIP_API_URL,
+                    data={"url": generated_image_url},  # form-data로 보냄
+                    timeout=60.0,
+                )
+                yolo_resp.raise_for_status()
+                yolo_results = (
+                    yolo_resp.json()
+                )  # [{label, confidence, bbox, clip_embedding}, ...]
 
-            # 3. 상품 정보 조회
+            detected_part_ids = []
+            celery_results = []
+            for obj in yolo_results:
+                part_id = str(uuid.uuid4())
+                bbox = obj["bbox"]  # [x, y, width, height]
+                label = obj.get("label", "object")
+                embedding = obj.get("clip_embedding")
+                celery_result = qdrant_search_task.delay(embedding, 5)
+                celery_results.append((part_id, celery_result, label, bbox))
+                detected_part_ids.append(part_id)
+
+            # 내부 polling: 모든 태스크가 끝날 때까지 주기적으로 체크
+            timeout_sec = 30  # 최대 30초 대기
+            interval_sec = 0.5  # 0.5초마다 체크
+            start = time.time()
+            while True:
+                if all(r.ready() for _, r, _, _ in celery_results):
+                    break
+                if time.time() - start > timeout_sec:
+                    raise Exception("Qdrant 검색 태스크 timeout")
+                await asyncio.sleep(interval_sec)
+
+            # 결과 모으기
+            detected_furnitures = []
+            for part_id, celery_result, label, bbox in celery_results:
+                qdrant_resp = celery_result.get()
+                hits = qdrant_resp.get("result", [])
+                danawa_products = [
+                    qdrant_payload_to_danawa_product(hit.get("payload", {}))
+                    for hit in hits
+                ]
+                furniture = FurnitureDetected(
+                    id=part_id,
+                    label=label,
+                    bounding_box=BoundingBox(
+                        x=bbox[0], y=bbox[1], width=bbox[2], height=bbox[3]
+                    ),
+                    danawa_products=danawa_products,
+                    created_at=now(),
+                )
+                detected_furnitures.append(furniture)
+
+            # 4. 상품 정보 조회
             products = await self.interior_repository.get_danawa_products_by_ids(
-                furniture.danawa_products_id
+                [p.id for f in detected_furnitures for p in f.danawa_products]
             )
             products_map = {p.id: p for p in products}
 
-            # 4. 인테리어 객체 생성
-            interior = Interior(
-                id=str(uuid4()),
-                user_id=user_id,
-                original_image_url=image_url,
-                interior_type_id=style,
-                room_type_id=room_type,
-                status="success",
-                saved=False,
-                generated_image_url=generated_image_url,
-                detected_parts=[furniture_id],
-                created_at=now(),
-                updated_at=now(),
-            )
+            # 7. 매퍼로 최종 응답 생성 (Qdrant payload의 image_url, product_name 등 반영)
+            def enrich_product_with_qdrant_info(product, qdrant_payload):
+                return product.__class__(
+                    id=product.id,
+                    name=qdrant_payload.get("product_name", product.name),
+                    product_url=qdrant_payload.get("product_url", product.product_url),
+                    image_url=qdrant_payload.get("image_url", product.image_url),
+                    dimensions=Dimensions(
+                        width_cm=qdrant_payload.get(
+                            "width_cm", getattr(product.dimensions, "width_cm", 0)
+                        ),
+                        depth_cm=qdrant_payload.get(
+                            "depth_cm", getattr(product.dimensions, "depth_cm", 0)
+                        ),
+                        height_cm=qdrant_payload.get(
+                            "height_cm", getattr(product.dimensions, "height_cm", 0)
+                        ),
+                    ),
+                    label=qdrant_payload.get("label", product.label),
+                )
 
-            # 5. DB 저장
-            await self.interior_repository.create(interior)
+            # products_map은 DB 기준이므로, Qdrant payload 정보로 enrich
+            for part in detected_furnitures:
+                for i, pid in enumerate(part.danawa_products_id):
+                    # Qdrant payload에서 해당 id의 정보 찾기
+                    for hit in hits:
+                        payload = hit.get("payload", {})
+                        if payload.get("id") == pid and pid in products_map:
+                            products_map[pid] = enrich_product_with_qdrant_info(
+                                products_map[pid], payload
+                            )
 
-            # 6. 매퍼로 최종 응답 생성
-            return domain_to_interior_generate_response(
-                interior, furnitures, products_map
-            )
+            return domain_to_interior_generate_response(detected_furnitures)
 
         except Exception as e:
             raise Exception(f"인테리어 생성 중 오류 발생: {str(e)}")

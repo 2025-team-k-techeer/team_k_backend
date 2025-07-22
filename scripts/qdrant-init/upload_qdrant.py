@@ -58,6 +58,7 @@ def parse_points(raw_points, vector_size=768):
             skipped += 1
             continue
         payload = item.get("payload", {})
+        payload["id"] = item.get("id")  # id 항목 추가
         point = {
             "id": idx,  # 항상 순번으로 id 지정 (중복 방지)
             "vector": vec,
