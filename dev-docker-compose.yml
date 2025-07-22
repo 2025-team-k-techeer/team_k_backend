@@ -17,6 +17,7 @@ services:
       - mongo
     networks:
       - app-network
+      - session_example
     restart: always
     develop:
       watch:
@@ -31,7 +32,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.services.fastapi.loadbalancer.server.port=8000"
-      - "traefik.http.routers.fastapi.rule=Host(`fastapi.cloudsession.cloud`)"
+      - "traefik.http.routers.fastapi.rule=Host(\"fastapi.cloudsession.cloud\")"
       - "traefik.http.routers.fastapi.entrypoints=web"
   mongo:
     image: mongo
@@ -157,40 +158,39 @@ services:
       - app-network
 
   traefik:
-    image: traefik:v3.3
+    image: traefik:v2.9
     command:
-      - "--api.insecure=false"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedByDefault=false"
-      - "--entryPoints.web.address=:80"
-      - "--entryPoints.dashboard.address=:8090"
-      - "--log.level=DEBUG"
-      - "--accesslog=true"
-      - "--accesslog.filepath=/traefik/logs/access.log"
-      - "--accesslog.bufferingsize=100"
-      - "--accesslog.format=json"
-      - "--accesslog.fields.defaultmode=keep"
-      - "--accesslog.fields.headers.defaultmode=keep"
-      - "--accesslog.fields.headers.names.X-Forwarded-For=keep"
+      - "--api.insecure=true"
+      - "--providers.docker=true" 
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=app-network"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=INFO" # 로그 관련 설정
+      - "--accesslog=true" # 로그 관련 설정
+      - "--accesslog.filepath=/traefik/logs/access.log" # 로그 관련 설정
+      - "--accesslog.bufferingsize=100" # 로그 관련 설정
+      - "--accesslog.format=json" # 로그 관련 설정
+      - "--accesslog.fields.defaultmode=keep" # 로그 관련 설정
+      - "--accesslog.fields.headers.defaultmode=keep" # 로그 관련 설정
+      - "--accesslog.fields.headers.names.X-Forwarded-For=keep" # 로그 관련 설정
       - "--api.dashboard=true"
-      - "--metrics.prometheus=true"
-      - "--metrics.prometheus.buckets=0.100000,0.300000,1.200000,5.000000"
-      - "--metrics.prometheus.addEntryPointsLabels=true"
-      - "--metrics.prometheus.addServicesLabels=true"
-      - "--entryPoints.metrics.address=:8091"
-      - "--metrics.prometheus.entryPoint=metrics"
-      - "--tracing=true"
-      - "--tracing.otlp=true"
-      - "--tracing.otlp.grpc.insecure=true"
-      - "--tracing.otlp.grpc.endpoint=localhost:4317"
-      - "--tracing.serviceName=traefik"
-      - "--tracing.sampleRate=1.0"
+      - "--metrics.prometheus=true" # 메트릭 활성화
+      - "--metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000"
+      - "--metrics.prometheus.addEntryPointsLabels=true" # 라벨링 추가
+      - "--metrics.prometheus.addServicesLabels=true" # 라벨링 추가
+      - "--entryPoints.metrics.address=:8091" # 메트릭 포트 설정
+      - "--metrics.prometheus.entryPoint=metrics" # /metrics로 노출
     ports:
-      - target: 80
-        published: 80
-        protocol: tcp
-        mode: host
-      - target: 8090
+      - "80:80" # http
+    # - "443:443" # https
+      - "8080:8080" # 대시보드
+      - "8091:8091" # 메트릭
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - app-network
+    labels:
+      - "traefik.enable=true"
 
 
   prometheus:
@@ -201,25 +201,31 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:                 # ✅ 이거 추가
+    - app-network
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:9.5.20
+    user: root
     ports:
       - "3000:3000"
     volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
       - grafana_data:/var/lib/grafana
-      - grafana_data:/etc/grafana/provisioning
+    networks:
+      - app-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
       - "traefik.http.routers.grafana.rule=Host(`grafana.cloudsession.cloud`)"
-      - "traefik.http.routers.fastapi.entrypoints=web"
+      - "traefik.http.routers.grafana.entrypoints=web"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
 
 
 networks:
   app-network:
     driver: bridge
-
+  session_example:
+    driver: bridge
 volumes:
   mongodb:
   redis-data:
