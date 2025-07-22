@@ -28,9 +28,11 @@ services:
           action: rebuild
     command: >
       python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
   mongo:
     image: mongo
     container_name: docker-mongo-1
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.5"]
     ports:
       - "27017:27017"
     environment:
@@ -41,6 +43,7 @@ services:
       - ./scripts/mongo-init:/docker-entrypoint-initdb.d
     networks:
       - app-network
+    mem_limit: 1g
     hostname: mongo
 
   mongo_express:
