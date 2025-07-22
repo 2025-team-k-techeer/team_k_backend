@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # Qdrant settings
     QDRANT_HOST: str
     QDRANT_PORT: int
+    QDRANT_SEARCH_URL: str
 
     # Replicate API key
     REPLICATE_API_KEY: str
@@ -37,11 +38,13 @@ class Settings(BaseSettings):
     GCS_BUCKET: str
     GOOGLE_APPLICATION_CREDENTIALS: str
 
+    # Celery settings
+    CELERY_BROKER_URL: str
+    CELERY_RESULT_BACKEND: str
+
     # database_password: str
     # jwt_secret: str
     # email_password: str
-    # celery_broker_url: str
-    # celery_backend_url: str
 
 
 @lru_cache

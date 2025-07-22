@@ -21,22 +21,25 @@ class Dimensions(BaseModel):
 
 
 class DanawaProduct(BaseModel):
-    """다나와 제품 정보 스키마"""
+    """다나와 제품 정보 스키마 (명세서 기반)"""
 
     id: str
     name: str
     product_url: str
     image_url: str
     dimensions: Dimensions
+    label: Optional[str] = (
+        None  # 명세서에는 label 필드가 있으나, 실제 DB에는 없을 수 있어 optional 처리
+    )
 
 
 class BoundingBox(BaseModel):
-    """가구 위치 정보 스키마"""
+    """가구 위치 정보 스키마 (명세서 기반)"""
 
-    x: int
-    y: int
-    width: int
-    height: int
+    x: float  # YOLO+CLIP에서 float으로 반환됨
+    y: float
+    width: float
+    height: float
 
 
 class DetectedPart(BaseModel):
@@ -44,10 +47,11 @@ class DetectedPart(BaseModel):
     bounding_box: BoundingBox
     danawa_products: Optional[List[DanawaProduct]] = None
     created_at: datetime
+    label: Optional[str] = None  # 객체 인식 label (YOLO+CLIP)
 
 
 class InteriorGenerateResponse(BaseModel):
-    """인테리어 생성 응답 스키마"""
+    """인테리어 생성 응답 스키마 (명세서 기반)"""
 
     id: str
     status: str
@@ -78,6 +82,7 @@ class StyleInfoListResponse(BaseModel):
     data: list[StyleInfo]
 
 
+# 오류 응답 스키마 (명세서 기반)
 class ErrorResponse(BaseModel):
     """에러 응답 스키마"""
 
