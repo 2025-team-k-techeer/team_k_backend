@@ -28,6 +28,11 @@ services:
           action: rebuild
     command: >
       python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.fastapi.loadbalancer.server.port=8000"
+      - "traefik.http.routers.fastapi.rule=Host(`fastapi.cloudsession.cloud`)"
+      - "traefik.http.routers.fastapi.entrypoints=web"
   mongo:
     image: mongo
     container_name: docker-mongo-1
@@ -150,6 +155,67 @@ services:
     entrypoint: [ "python", "/upload_qdrant.py" ]
     networks:
       - app-network
+
+  traefik:
+    image: traefik:v3.3
+    command:
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedByDefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.dashboard.address=:8090"
+      - "--log.level=DEBUG"
+      - "--accesslog=true"
+      - "--accesslog.filepath=/traefik/logs/access.log"
+      - "--accesslog.bufferingsize=100"
+      - "--accesslog.format=json"
+      - "--accesslog.fields.defaultmode=keep"
+      - "--accesslog.fields.headers.defaultmode=keep"
+      - "--accesslog.fields.headers.names.X-Forwarded-For=keep"
+      - "--api.dashboard=true"
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.buckets=0.100000,0.300000,1.200000,5.000000"
+      - "--metrics.prometheus.addEntryPointsLabels=true"
+      - "--metrics.prometheus.addServicesLabels=true"
+      - "--entryPoints.metrics.address=:8091"
+      - "--metrics.prometheus.entryPoint=metrics"
+      - "--tracing=true"
+      - "--tracing.otlp=true"
+      - "--tracing.otlp.grpc.insecure=true"
+      - "--tracing.otlp.grpc.endpoint=localhost:4317"
+      - "--tracing.serviceName=traefik"
+      - "--tracing.sampleRate=1.0"
+    ports:
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 8090
+
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - grafana_data:/etc/grafana/provisioning
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.cloudsession.cloud`)"
+      - "traefik.http.routers.fastapi.entrypoints=web"
+
+
 networks:
   app-network:
     driver: bridge
@@ -158,3 +224,4 @@ volumes:
   mongodb:
   redis-data:
   rabbitmq-data:
+  grafana_data:
