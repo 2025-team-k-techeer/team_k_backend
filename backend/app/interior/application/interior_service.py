@@ -12,6 +12,9 @@ from app.interior.domain.interior import (
 from app.interior.domain.repository.interior_repository import InteriorRepository
 from app.integrations.replicate import ReplicateService
 from app.interior.schemas.mappers import domain_to_interior_generate_response
+import httpx
+from app.celery.celery import match_product_with_qdrant
+from dataclasses import dataclass
 
 
 def now(utc=True):
@@ -46,21 +49,33 @@ class InteriorService:
                 image_url, room_type, style, prompt
             )
 
-            # 2. 가구 인식 (YOLO 모델 사용)
-            furniture_id = str(uuid4())
-            furniture = FurnitureDetected(
-                id=furniture_id,
-                interior_id="",  # 나중에 설정
-                label="desk",
-                bounding_box=BoundingBox(x=120, y=200, width=280, height=160),
-                danawa_products_id=["danawa_desk_001", "danawa_desk_002"],
-                created_at=now(),
-            )
-            furnitures = [furniture]
+            # 2. 가구 인식 (YOLO+CLIP API 사용)
+            yolo_results = await call_yolo_clip_api(image_url)
+            furnitures = []
+            for obj in yolo_results:
+                furniture_id = str(uuid4())
+                bbox = obj["bbox"]
+                furniture = FurnitureDetected(
+                    id=furniture_id,
+                    interior_id="",  # 나중에 설정
+                    label=obj["label"],
+                    bounding_box=BoundingBox(
+                        x=int(bbox[0]),
+                        y=int(bbox[1]),
+                        width=int(bbox[2]),
+                        height=int(bbox[3]),
+                    ),
+                    danawa_products_id=[],  # 상품 매칭 로직 추가 필요
+                    clip_embedding=obj.get("clip_embedding", []),
+                    created_at=now(),
+                )
+                furnitures.append(furniture)
+                # Celery 태스크 호출
+                match_product_with_qdrant.delay(furniture.id, furniture.clip_embedding)
 
             # 3. 상품 정보 조회
             products = await self.interior_repository.get_danawa_products_by_ids(
-                furniture.danawa_products_id
+                [f.danawa_products_id for f in furnitures]
             )
             products_map = {p.id: p for p in products}
 
@@ -74,7 +89,7 @@ class InteriorService:
                 status="success",
                 saved=False,
                 generated_image_url=generated_image_url,
-                detected_parts=[furniture_id],
+                detected_parts=[f.id for f in furnitures],
                 created_at=now(),
                 updated_at=now(),
             )
@@ -155,3 +170,13 @@ class InteriorService:
                     furniture[0] if isinstance(furniture, list) else furniture
                 )
         return interiors, furniture_map
+
+
+async def call_yolo_clip_api(image_url: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://yolo-clip-api-604858116968.asia-northeast3.run.app/process",
+            data={"url": image_url},
+        )
+        response.raise_for_status()
+        return response.json()

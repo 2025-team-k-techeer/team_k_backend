@@ -150,6 +150,25 @@ services:
     entrypoint: [ "python", "/upload_qdrant.py" ]
     networks:
       - app-network
+
+  celery_worker:
+    build: ./backend
+    container_name: celery_worker
+    command: celery -A app.interior.tasks.qdrant_tasks worker --loglevel=info
+    volumes:
+      - ./backend:/backend
+      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - qdrant
+      - rabbitmq
+      - mongo
+    networks:
+      - app-network
+    restart: always
+
 networks:
   app-network:
     driver: bridge
