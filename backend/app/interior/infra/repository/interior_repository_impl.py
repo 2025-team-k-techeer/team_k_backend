@@ -90,6 +90,7 @@ class InteriorRepositoryImpl(InteriorRepository):
                 "height": furniture.bounding_box.height,
             },
             "danawa_products_id": furniture.danawa_products_id,
+            "danawa_products_image_index": furniture.danawa_products_image_index,
             "created_at": furniture.created_at,
         }
 
@@ -106,6 +107,7 @@ class InteriorRepositoryImpl(InteriorRepository):
                 height=doc["bounding_box"]["height"],
             ),
             danawa_products_id=doc["danawa_products_id"],
+            danawa_products_image_index=doc.get("danawa_products_image_index"),
             created_at=doc.get("created_at"),
         )
 
@@ -238,6 +240,15 @@ class InteriorRepositoryImpl(InteriorRepository):
         async for doc in cursor:
             furnitures.append(self._dict_to_furniture_detected(doc))
         return furnitures
+
+    async def get_furniture_detected_by_ids(
+        self, ids: list[str]
+    ) -> list[FurnitureDetected]:
+        cursor = self.furniture_detected_collection.find({"_id": {"$in": ids}})
+        result = []
+        async for doc in cursor:
+            result.append(self._dict_to_furniture_detected(doc))
+        return result
 
     async def get_danawa_products_by_ids(
         self, product_ids: List[str]

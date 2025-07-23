@@ -212,8 +212,13 @@ async def get_user_library(
     사용자가 저장한 인테리어 이미지 목록을 조회합니다.
     """
     try:
-        interiors, furniture_map = await interior_service.get_user_library(user_id)
-        result = [domain_to_user_library_interior(i, furniture_map) for i in interiors]
+        interiors, furniture_map, products_map = (
+            await interior_service.get_user_library(user_id)
+        )
+        result = [
+            domain_to_user_library_interior(i, furniture_map, products_map)
+            for i in interiors
+        ]
         return UserLibraryResponse(status="success", interiors=result)
     except Exception as e:
         return {"status": "error", "message": "인증되지 않은 사용자입니다."}
