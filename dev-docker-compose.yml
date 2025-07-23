@@ -216,6 +216,7 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
+    container_name: prometheus
     ports:
       - "9090:9090"
     volumes:
@@ -240,6 +241,51 @@ services:
       - "traefik.http.routers.grafana.rule=Host(`grafana.cloudsession.cloud`)"
       - "traefik.http.routers.grafana.entrypoints=web"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+  mongodb_exporter:
+    image: bitnami/mongodb-exporter:latest
+    container_name: mongodb_exporter
+    environment:
+      - MONGODB_URI=mongodb://admin:admin123@mongo:27017
+    ports:
+      - "9216:9216"
+    depends_on:
+      - mongo
+    networks:
+      - app-network
+  redis_exporter:
+    image: oliver006/redis_exporter
+    ports:
+      - "9121:9121"
+    depends_on:
+      - redis
+    networks:
+      - app-network
+
+  rabbitmq_exporter:
+    image: kbudde/rabbitmq-exporter
+    ports:
+      - "9419:9419"
+    environment:
+      - RABBIT_URL=http://rabbitmq:15672
+      - RABBIT_USER=guest
+      - RABBIT_PASSWORD=guest
+    depends_on:
+      - rabbitmq
+    networks:
+      - app-network
+
+  celery_exporter:
+    image: danihodovic/celery-exporter:latest
+    container_name: celery_exporter
+    ports:
+      - "9808:9808"  # 외부에서 접근 가능하도록 노출
+    depends_on:
+      - redis
+      - celery_worker
+    environment:
+      - CE_BROKER_URL=redis://redis:6379/0
+    networks:
+      - app-network
 
 
 networks:
