@@ -5,7 +5,7 @@ from fastapi import Cookie, HTTPException, status, Depends
 
 JWT_SECRET = "your_jwt_secret"  # 실제 환경에서는 환경변수로 관리하세요
 JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 15
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 

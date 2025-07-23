@@ -103,17 +103,17 @@ class SaveInteriorResponse(BaseModel):
 
 
 class UserLibraryBoundingBox(BaseModel):
-    x: int
-    y: int
-    width: int
-    height: int
+    x: float
+    y: float
+    width: float
+    height: float
 
 
 class UserLibraryDetectedPart(BaseModel):
     furniture_id: str
     label: str
     bounding_box: UserLibraryBoundingBox
-    danawa_products_id: List[str]
+    danawa_products: List[DanawaProduct]  # 실제 상품 정보 리스트 추가
 
 
 class UserLibraryInterior(BaseModel):

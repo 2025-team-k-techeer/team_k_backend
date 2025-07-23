@@ -8,8 +8,13 @@ QDRANT_SEARCH_URL = os.getenv(
 
 
 @celery_app.task
-def qdrant_search_task(embedding, top_k=3):
-    payload = {"vector": embedding, "top": top_k, "with_payload": True}
+def qdrant_search_task(label, embedding, top_k=5):
+    payload = {
+        "query": embedding,
+        "top": top_k,
+        "with_payload": True,
+        "filter": {"must": {"key": "label", "match": {"value": label}}},
+    }
     resp = requests.post(QDRANT_SEARCH_URL, json=payload, timeout=10)
     resp.raise_for_status()
     return resp.json()

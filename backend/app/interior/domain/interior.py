@@ -38,6 +38,9 @@ class FurnitureDetected:
     bounding_box: BoundingBox = None
     danawa_products_id: List[str] = None
     danawa_products: List[DanawaProduct] = None  # Qdrant 기반 추천 상품 리스트
+    danawa_products_image_index: Optional[List[int]] = (
+        None  # Qdrant 이미지 인덱스 리스트
+    )
     created_at: Optional[datetime] = None
 
 
