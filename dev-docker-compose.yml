@@ -28,9 +28,11 @@ services:
           action: rebuild
     command: >
       python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
   mongo:
     image: mongo
     container_name: docker-mongo-1
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.5"]
     ports:
       - "27017:27017"
     environment:
@@ -41,6 +43,7 @@ services:
       - ./scripts/mongo-init:/docker-entrypoint-initdb.d
     networks:
       - app-network
+    mem_limit: 1g
     hostname: mongo
 
   mongo_express:
@@ -150,6 +153,25 @@ services:
     entrypoint: [ "python", "/upload_qdrant.py" ]
     networks:
       - app-network
+
+  celery_worker:
+    build: ./backend
+    container_name: celery_worker
+    command: celery -A app.interior.tasks.qdrant_tasks worker --loglevel=info
+    volumes:
+      - ./backend:/backend
+      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - qdrant
+      - rabbitmq
+      - mongo
+    networks:
+      - app-network
+    restart: always
+
 networks:
   app-network:
     driver: bridge

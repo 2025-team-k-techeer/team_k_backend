@@ -71,6 +71,12 @@ class InteriorRepository(ABC):
         pass
 
     @abstractmethod
+    async def get_furniture_detected_by_ids(
+        self, ids: list[str]
+    ) -> list["FurnitureDetected"]:
+        pass
+
+    @abstractmethod
     async def get_danawa_products_by_ids(
         self, product_ids: List[str]
     ) -> List[DanawaProduct]:
