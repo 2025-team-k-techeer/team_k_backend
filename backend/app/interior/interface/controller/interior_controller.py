@@ -13,6 +13,7 @@ from app.interior.schemas.interior_schema import (
     SaveInteriorResponse,
     UserLibraryResponse,
     ImageUploadResponse,
+    ErrorResponse,  # 추가
 )
 from app.interior.schemas.mappers import (
     interior_type_to_style_info_item,
@@ -78,28 +79,44 @@ async def upload_image(
         )
 
 
-@router.post("/generate", response_model=InteriorGenerateResponse)
+@router.post(
+    "/generate",
+    response_model=InteriorGenerateResponse,
+    responses={
+        422: {"model": ErrorResponse},
+        500: {"model": ErrorResponse},
+    },
+)
 async def generate_interior(
     request: InteriorGenerateRequest,
-    user_id: str = Depends(get_current_user_id_bearer),  # Bearer 토큰 사용
+    user_id: str = Depends(get_current_user_id_bearer),
     interior_service: InteriorService = Depends(get_interior_service),
 ):
     """
-    인테리어 이미지를 생성하고 가구를 인식하는 엔드포인트
+    인테리어 이미지를 생성하고 가구를 인식하는 엔드포인트 (명세서 기반)
     """
     try:
         # 필수 필드 검증
-        if not request.room_type or not request.style:
-            raise HTTPException(
-                status_code=422,
-                detail="room_type, style 중 하나 이상이 누락되었습니다.",
+        if not request.room_type or not request.style or not request.prompt:
+            return (
+                ErrorResponse(
+                    status="failed",
+                    message="room_type, style, prompt 중 하나 이상이 누락되었습니다.",
+                    code="MISSING_FIELD",
+                ),
+                422,
+            )
+        if not request.image_url:
+            return (
+                ErrorResponse(
+                    status="failed",
+                    message="이미지 URL이 필요합니다.",
+                    code="MISSING_FIELD",
+                ),
+                422,
             )
 
-        # 이미지 URL 검증
-        if not request.image_url:
-            raise HTTPException(status_code=422, detail="이미지 URL이 필요합니다.")
-
-        # 의존성 주입된 서비스 사용 (최종 response 반환)
+        # 서비스 호출
         response = await interior_service.generate_interior(
             user_id=user_id,
             image_url=request.image_url,
@@ -109,11 +126,15 @@ async def generate_interior(
         )
         return response
 
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"서버 내부 오류가 발생했습니다: {str(e)}"
+        return (
+            ErrorResponse(
+                status="error",
+                message="Unexpected server error occurred.",
+                code="INTERNAL_ERROR",
+                detail=str(e),
+            ),
+            500,
         )
 
 
@@ -191,8 +212,13 @@ async def get_user_library(
     사용자가 저장한 인테리어 이미지 목록을 조회합니다.
     """
     try:
-        interiors, furniture_map = await interior_service.get_user_library(user_id)
-        result = [domain_to_user_library_interior(i, furniture_map) for i in interiors]
+        interiors, furniture_map, products_map = (
+            await interior_service.get_user_library(user_id)
+        )
+        result = [
+            domain_to_user_library_interior(i, furniture_map, products_map)
+            for i in interiors
+        ]
         return UserLibraryResponse(status="success", interiors=result)
     except Exception as e:
         return {"status": "error", "message": "인증되지 않은 사용자입니다."}
