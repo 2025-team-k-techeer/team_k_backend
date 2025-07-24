@@ -1,0 +1,38 @@
+stages:
+  - deploy # 배포만을 위한 하나의 단계 정의
+
+deploy_to_gce:
+  stage: deploy
+  only:
+    - main # main 브랜치에 push 될 때만 실행됨
+
+  before_script:
+    # SSH 클라이언트 없으면 설치 (GitLab Runner에서 필요)
+    - "which ssh-agent || (apt-get update -y && apt-get install openssh-client -y)"
+
+    # SSH 인증 에이전트 시작
+    - eval $(ssh-agent -s)
+
+    # GitLab 환경변수에 등록된 SSH 비공개 키를 SSH 에이전트에 등록
+    - echo "$GCE_SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+
+    # SSH 설정 디렉토리 생성
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+
+    # GCE 서버의 호스트 키를 등록 (SSH 접속 시 인증서 오류 방지)
+    - ssh-keyscan -H "$GCE_HOST" >> ~/.ssh/known_hosts
+
+  script:
+    # 1. CI 환경에서 .env 파일 생성 (GitLab 변수에서 불러옴)
+    - echo -e "$ENV_FILE" > .env
+
+    # 2. GCE 서버의 프로젝트 디렉토리로 .env 파일 전송
+    - scp .env $GCE_USER@$GCE_HOST:~/my-app/.env
+
+    # 3. GCE 서버에 SSH 접속해서 아래 명령어 실행
+    - ssh $GCE_USER@$GCE_HOST '
+      cd ~/my-app &&
+      git pull origin main &&
+      make docker-deploy-up
+      '
