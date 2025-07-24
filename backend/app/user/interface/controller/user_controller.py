@@ -112,69 +112,69 @@ async def logout_user(response: Response):
     return {"message": "로그아웃되었습니다."}
 
 
-@router.post("/token/verify")
-async def verify_token(
-    user_id: str = Depends(get_current_user_id_bearer),
-):  # Bearer 토큰 기반으로 변경
-    """토큰 검증 (Bearer 토큰 기반)"""
-    return {"valid": True, "user_id": user_id}
+# @router.post("/token/verify")
+# async def verify_token(
+#     user_id: str = Depends(get_current_user_id_bearer),
+# ):  # Bearer 토큰 기반으로 변경
+#     """토큰 검증 (Bearer 토큰 기반)"""
+#     return {"valid": True, "user_id": user_id}
 
 
 class RefreshTokenBody(BaseModel):
     refresh_token: str
 
 
-@router.post("/token/refresh")
-async def refresh_access_token(
-    body: RefreshTokenBody,
-):
-    """액세스 토큰 갱신 (Bearer 토큰 기반, request body로 받음)"""
-    refresh_token = body.refresh_token
-    if not refresh_token:
-        raise HTTPException(status_code=401, detail="리프레시 토큰이 필요합니다.")
+# @router.post("/token/refresh")
+# async def refresh_access_token(
+#     body: RefreshTokenBody,
+# ):
+#     """액세스 토큰 갱신 (Bearer 토큰 기반, request body로 받음)"""
+#     refresh_token = body.refresh_token
+#     if not refresh_token:
+#         raise HTTPException(status_code=401, detail="리프레시 토큰이 필요합니다.")
 
-    try:
-        payload = decode_token(refresh_token)
-        if payload and payload.get("type") == "refresh":
-            new_access_token = create_access_token(payload["user_id"])
-            return {"access_token": new_access_token}
-        else:
-            raise HTTPException(
-                status_code=401, detail="유효하지 않은 refresh 토큰입니다."
-            )
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"토큰 갱신 실패: {str(e)}")
+#     try:
+#         payload = decode_token(refresh_token)
+#         if payload and payload.get("type") == "refresh":
+#             new_access_token = create_access_token(payload["user_id"])
+#             return {"access_token": new_access_token}
+#         else:
+#             raise HTTPException(
+#                 status_code=401, detail="유효하지 않은 refresh 토큰입니다."
+#             )
+#     except Exception as e:
+#         raise HTTPException(status_code=401, detail=f"토큰 갱신 실패: {str(e)}")
 
 
-@router.post("/token/refresh-bearer")
-async def refresh_access_token_bearer(
-    refresh_token: str, user_service: UserService = Depends(get_user_service)
-):
-    """액세스 토큰 갱신 (Bearer 토큰 기반)"""
-    try:
-        payload = decode_token(refresh_token)
-        if payload and payload.get("type") == "refresh":
-            user_id = payload["user_id"]
-            new_access_token = create_access_token(user_id)
-            new_refresh_token = create_refresh_token(user_id)
-            # 사용자 정보 조회 (더 이상 반환하지 않음)
-            user = await user_service.get_user_by_id(user_id)
-            if not user:
-                raise HTTPException(
-                    status_code=404, detail="사용자를 찾을 수 없습니다."
-                )
-            return {
-                "access_token": new_access_token,
-                "refresh_token": new_refresh_token,
-                "token_type": "bearer",
-                "expires_in": 3600,
-            }
-        else:
-            raise HTTPException(
-                status_code=401, detail="유효하지 않은 refresh 토큰입니다."
-            )
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"토큰 갱신 실패: {str(e)}")
+# @router.post("/token/refresh-bearer")
+# async def refresh_access_token_bearer(
+#     refresh_token: str, user_service: UserService = Depends(get_user_service)
+# ):
+#     """액세스 토큰 갱신 (Bearer 토큰 기반)"""
+#     try:
+#         payload = decode_token(refresh_token)
+#         if payload and payload.get("type") == "refresh":
+#             user_id = payload["user_id"]
+#             new_access_token = create_access_token(user_id)
+#             new_refresh_token = create_refresh_token(user_id)
+#             # 사용자 정보 조회 (더 이상 반환하지 않음)
+#             user = await user_service.get_user_by_id(user_id)
+#             if not user:
+#                 raise HTTPException(
+#                     status_code=404, detail="사용자를 찾을 수 없습니다."
+#                 )
+#             return {
+#                 "access_token": new_access_token,
+#                 "refresh_token": new_refresh_token,
+#                 "token_type": "bearer",
+#                 "expires_in": 3600,
+#             }
+#         else:
+#             raise HTTPException(
+#                 status_code=401, detail="유효하지 않은 refresh 토큰입니다."
+#             )
+#     except Exception as e:
+#         raise HTTPException(status_code=401, detail=f"토큰 갱신 실패: {str(e)}")
 
 
 @router.get("/mypage")

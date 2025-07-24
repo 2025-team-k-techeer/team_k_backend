@@ -7,7 +7,7 @@ services:
       # - "5678:5678"  # Debugging port
     volumes:
       - ./backend:/backend
-      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+      - .${GOOGLE_APPLICATION_CREDENTIALS}:/${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
     environment:
       - MONGO_URI=${MONGO_URI}
     env_file:
@@ -26,7 +26,7 @@ services:
           target: /backend/requirements.txt
           action: rebuild
     command: >
-              gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+      gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.fastapi.rule=Host(`api.zipkku.shop`)"
@@ -110,13 +110,13 @@ services:
     restart: always
 
   mongo-seed:
+    depends_on:
+    - mongo
     build:
       context: .
       dockerfile: scripts/mongo-init/mongo-seed.Dockerfile
-    depends_on:
-      - mongo
     volumes:
-      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+      - .${GOOGLE_APPLICATION_CREDENTIALS}:/${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
       - ./scripts/mongo-init:/docker-entrypoint-initdb.d
     environment:
       - GCS_BUCKET=${GCS_BUCKET}
@@ -188,7 +188,7 @@ services:
       - "--entrypoints.web.address=:80"
       - "--log.level=INFO" # 로그 관련 설정
       - "--accesslog=true" # 로그 관련 설정
-      - "--accesslog.filepath=/traefik/logs/access.log" # 로그 관련 설정
+      - "--accesslog.filepath=/logs/access.log" # 로그 관련 설정
       - "--accesslog.bufferingsize=100" # 로그 관련 설정
       - "--accesslog.format=json" # 로그 관련 설정
       - "--accesslog.fields.defaultmode=keep" # 로그 관련 설정
@@ -246,14 +246,14 @@ services:
       - app-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.grafana.rule=Host(`grafana.cloudsession.cloud`)"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.zipkku.shop`)"
       - "traefik.http.routers.grafana.entrypoints=web"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
   mongodb_exporter:
     image: bitnami/mongodb-exporter:latest
     container_name: mongodb_exporter
     environment:
-      - MONGODB_URI=mongodb://admin:admin123@mongo:27017
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017
     ports:
       - "9216:9216"
     depends_on:
@@ -300,6 +300,7 @@ networks:
   app-network:
     driver: bridge
     name: app-network
+    
 volumes:
   mongodb:
   redis-data:

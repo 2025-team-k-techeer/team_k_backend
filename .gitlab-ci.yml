@@ -34,10 +34,10 @@ deploy_to_gce:
     - echo "$GOOGLE_APPLICATION_CREDENTIALS" | tr -d '\r' > gcp-key.json
     # 3. GCE 서버로 필요한 파일 전송
     - scp -o StrictHostKeyChecking=no .env $GCE_USER@$GCE_HOST:~/my-app/.env
-    - scp -o StrictHostKeyChecking=no gcp-key.json $GCE_USER@$GCE_HOST:~/my-app/gcp-key.json
+    - scp -o StrictHostKeyChecking=no wise-vault-465615-r2-f259679465ef.json $GCE_USER@$GCE_HOST:~/my-app/key/wise-vault-465615-r2-f259679465ef.json
     # 4. GCE 서버 접속 후 환경 변수 지정 + 배포 실행
     - ssh $GCE_USER@$GCE_HOST '
-      export GOOGLE_APPLICATION_CREDENTIALS=~/my-app/gcp-key.json &&
+      export GOOGLE_APPLICATION_CREDENTIALS=~/my-app/wise-vault-465615-r2-f259679465ef.json &&
       cd ~/my-app &&
       git pull origin main &&
       make docker-deploy-up

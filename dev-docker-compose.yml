@@ -4,10 +4,10 @@ services:
     container_name: fastapi
     ports:
       - "8000:8000"
-      - "5678:5678"  # Debugging port
+      - "5725:5725"  # Debugging port
     volumes:
       - ./backend:/backend
-      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+      - .${GOOGLE_APPLICATION_CREDENTIALS}:/${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
     environment:
       - MONGO_URI=${MONGO_URI}
       - debug=${DEBUG}
@@ -17,7 +17,6 @@ services:
       - mongo
     networks:
       - app-network
-      - session_example
     restart: always
     develop:
       watch:
@@ -28,7 +27,7 @@ services:
           target: /backend/requirements.txt
           action: rebuild
     command: >
-      python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      python -m debugpy --listen 0.0.0.0:5725 --wait-for-client -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     labels:
       - "traefik.enable=true"
       - "traefik.http.services.fastapi.loadbalancer.server.port=8000"
@@ -97,7 +96,7 @@ services:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"      # 메시징 포트
+      - "5724:5672"      # 메시징 포트
       - "15672:15672"    # 웹 UI 포트
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
@@ -109,14 +108,13 @@ services:
     restart: always
 
   mongo-seed:
-    image: google/cloud-sdk:alpine # ✅ 약 300MB, gsutil 포함, 인증도 가능
     depends_on:
       - mongo
     build:
       context: .
       dockerfile: scripts/mongo-init/mongo-seed.Dockerfile
     volumes:
-      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+      - .${GOOGLE_APPLICATION_CREDENTIALS}:/${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
       - ./scripts/mongo-init:/docker-entrypoint-initdb.d
     environment:
       - GCS_BUCKET=${GCS_BUCKET}
@@ -239,7 +237,7 @@ services:
       - app-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.grafana.rule=Host(`grafana.cloudsession.cloud`)"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.zipkku.shop`)"
       - "traefik.http.routers.grafana.entrypoints=web"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
   mongodb_exporter:
@@ -292,6 +290,7 @@ services:
 networks:
   app-network:
     driver: bridge
+    name: app-network
 
 volumes:
   mongodb:
