@@ -82,6 +82,7 @@ from app.user.interface.controller import user_controller
 from app.interior.interface.controller import interior_controller
 from prometheus_fastapi_instrumentator import Instrumentator
 
+
 app = FastAPI()
 
 # 👉 Prometheus metrics 등록

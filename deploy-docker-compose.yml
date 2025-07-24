@@ -230,6 +230,7 @@ services:
       - traefik-certs:/letsencrypt   # 🔥 인증서 저장소
     networks:
       - app-network
+      - default
     labels:
       - "traefik.enable=true"
 
