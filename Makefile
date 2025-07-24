@@ -18,3 +18,9 @@ docker-dev-mongo-sh:
 docker-dev-down-v:
 	docker compose -f dev-docker-compose.yml down -v
 
+docker-deploy-up:
+	docker compose -f deploy-docker-compose.yml up --build -d
+
+docker-deploy-down:
+	docker compose -f deploy-docker-compose.yml down
+
