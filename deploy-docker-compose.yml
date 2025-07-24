@@ -10,7 +10,6 @@ services:
       - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
     environment:
       - MONGO_URI=${MONGO_URI}
-      - debug=${DEBUG}
     env_file:
       - .env
     depends_on:
@@ -80,7 +79,7 @@ services:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      - .data/qdrant/data:/qdrant/storage
+      - ./data/qdrant/data:/qdrant/storage
     networks:
       - app-network
 
@@ -111,12 +110,11 @@ services:
     restart: always
 
   mongo-seed:
-    image: google/cloud-sdk:alpine # ✅ 약 300MB, gsutil 포함, 인증도 가능
-    depends_on:
-      - mongo
     build:
       context: .
       dockerfile: scripts/mongo-init/mongo-seed.Dockerfile
+    depends_on:
+      - mongo
     volumes:
       - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
       - ./scripts/mongo-init:/docker-entrypoint-initdb.d
@@ -187,7 +185,6 @@ services:
       - "--providers.docker=true" 
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network=app-network"
-
       - "--entrypoints.web.address=:80"
       - "--log.level=INFO" # 로그 관련 설정
       - "--accesslog=true" # 로그 관련 설정
@@ -204,20 +201,12 @@ services:
       - "--metrics.prometheus.addServicesLabels=true" # 라벨링 추가
       - "--entryPoints.metrics.address=:8091" # 메트릭 포트 설정
       - "--metrics.prometheus.entryPoint=metrics" # /metrics로 노출
-            # ✅ 기본 HTTP 포트
-      - "--entrypoints.web.address=:80"
-
-      # ✅ HTTPS 엔트리포인트 추가
-      - "--entrypoints.websecure.address=:443"
-
-      # ✅ HTTP → HTTPS 리디렉션
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.websecure.address=:443"       # ✅ HTTPS 엔트리포인트 추가
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"       # ✅ HTTP → HTTPS 리디렉션
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-
-      # ✅ Let's Encrypt 자동 인증서 발급 설정
-      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"       # ✅ Let's Encrypt 자동 인증서 발급 설정
       - "--certificatesresolvers.letsencrypt.acme.email=chlwogus180kr@gmail.com"
-      # - "--certificatesresolvers.letsencrypt.acme.email=hnn07185@gmail.com"  # ← 본인 이메일 입력
+      - "--certificatesresolvers.letsencrypt.acme.email=hnn07185@gmail.com"  # ← 본인 이메일 입력
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
 
     ports:
@@ -230,7 +219,6 @@ services:
       - traefik-certs:/letsencrypt   # 🔥 인증서 저장소
     networks:
       - app-network
-      - default
     labels:
       - "traefik.enable=true"
 
