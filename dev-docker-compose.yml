@@ -78,7 +78,7 @@ services:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      - .data/qdrant/data:/qdrant/storage
+      - ./data/qdrant/data:/qdrant/storage
     networks:
       - app-network
 
@@ -188,7 +188,7 @@ services:
       - "--entrypoints.web.address=:80"
       - "--log.level=INFO" # 로그 관련 설정
       - "--accesslog=true" # 로그 관련 설정
-      - "--accesslog.filepath=/traefik/logs/access.log" # 로그 관련 설정
+      - "--accesslog.filepath=/logs/access.log" # 로그 관련 설정
       - "--accesslog.bufferingsize=100" # 로그 관련 설정
       - "--accesslog.format=json" # 로그 관련 설정
       - "--accesslog.fields.defaultmode=keep" # 로그 관련 설정
@@ -208,6 +208,7 @@ services:
       - "8091:8091" # 메트릭
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
+      - ./logs/traefik:/logs
     networks:
       - app-network
     labels:
@@ -245,7 +246,7 @@ services:
     image: bitnami/mongodb-exporter:latest
     container_name: mongodb_exporter
     environment:
-      - MONGODB_URI=mongodb://admin:admin123@mongo:27017
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017
     ports:
       - "9216:9216"
     depends_on:
@@ -291,8 +292,7 @@ services:
 networks:
   app-network:
     driver: bridge
-  session_example:
-    driver: bridge
+
 volumes:
   mongodb:
   redis-data:
