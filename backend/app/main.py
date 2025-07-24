@@ -91,3 +91,7 @@ Instrumentator().instrument(app).expose(app)
 # 라우터 등록
 app.include_router(user_controller.router)
 app.include_router(interior_controller.router)
+
+from app.interior.interface.controller.ar_controller import router as ar_router
+
+app.include_router(ar_router)
