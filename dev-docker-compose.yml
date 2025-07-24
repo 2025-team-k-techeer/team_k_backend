@@ -4,10 +4,10 @@ services:
     container_name: fastapi
     ports:
       - "8000:8000"
-      - "5678:5678"  # Debugging port
+      - "5725:5725"  # Debugging port
     volumes:
       - ./backend:/backend
-      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+      - .${GOOGLE_APPLICATION_CREDENTIALS}:/${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
     environment:
       - MONGO_URI=${MONGO_URI}
       - debug=${DEBUG}
@@ -17,7 +17,6 @@ services:
       - mongo
     networks:
       - app-network
-      - session_example
     restart: always
     develop:
       watch:
@@ -28,7 +27,7 @@ services:
           target: /backend/requirements.txt
           action: rebuild
     command: >
-      python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      python -m debugpy --listen 0.0.0.0:5725 --wait-for-client -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     labels:
       - "traefik.enable=true"
       - "traefik.http.services.fastapi.loadbalancer.server.port=8000"
@@ -97,7 +96,7 @@ services:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"      # 메시징 포트
+      - "5724:5672"      # 메시징 포트
       - "15672:15672"    # 웹 UI 포트
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
@@ -109,14 +108,13 @@ services:
     restart: always
 
   mongo-seed:
-    image: google/cloud-sdk:alpine # ✅ 약 300MB, gsutil 포함, 인증도 가능
     depends_on:
       - mongo
     build:
       context: .
       dockerfile: scripts/mongo-init/mongo-seed.Dockerfile
     volumes:
-      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+      - ./${GOOGLE_APPLICATION_CREDENTIALS}:/${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
       - ./scripts/mongo-init:/docker-entrypoint-initdb.d
     environment:
       - GCS_BUCKET=${GCS_BUCKET}
@@ -130,10 +128,13 @@ services:
         mkdir -p /data/db/collections && \
         gsutil cp gs://${GCS_BUCKET}/mongo/danawa_products.json /data/db/collections/danawa_products.json && \
         gsutil cp gs://${GCS_BUCKET}/mongo/interior_types.json /data/db/collections/interior_types.json && \
+        gsutil cp gs://${GCS_BUCKET}/mongo/ar_chair_documents.json /data/db/collections/ar_chair_documents.json && \
+
         echo '✅ mongoimport 시작' && \
         sleep 10 && \
         mongoimport --host mongo --db=interior_db --collection=danawa_products --file=/data/db/collections/danawa_products.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin && \
-        mongoimport --host mongo --db=interior_db --collection=interior_types --file=/data/db/collections/interior_types.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin
+        mongoimport --host mongo --db=interior_db --collection=interior_types --file=/data/db/collections/interior_types.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin && \
+        mongoimport --host mongo --db=interior_db --collection=ar_chair_documents --file=/data/db/collections/ar_chair_documents.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin
         "
     networks:
       - app-network
@@ -145,7 +146,7 @@ services:
     depends_on:
       - qdrant
     volumes:
-      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+      - ./${GOOGLE_APPLICATION_CREDENTIALS}:/${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
       - ./scripts/qdrant-init/upload_qdrant.py:/upload_qdrant.py
     environment:
       - GCS_BUCKET=${GCS_BUCKET}
@@ -165,7 +166,7 @@ services:
     command: celery -A app.interior.tasks.qdrant_tasks worker --loglevel=info
     volumes:
       - ./backend:/backend
-      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro
+      - ./${GOOGLE_APPLICATION_CREDENTIALS}:/${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
     env_file:
       - .env
     depends_on:
@@ -239,7 +240,7 @@ services:
       - app-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.grafana.rule=Host(`grafana.cloudsession.cloud`)"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.zipkku.shop`)"
       - "traefik.http.routers.grafana.entrypoints=web"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
   mongodb_exporter:
@@ -292,6 +293,7 @@ services:
 networks:
   app-network:
     driver: bridge
+    name: app-network
 
 volumes:
   mongodb:
