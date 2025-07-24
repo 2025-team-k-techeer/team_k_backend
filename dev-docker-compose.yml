@@ -1,0 +1,300 @@
+services:
+  fastapi:
+    build: ./backend
+    container_name: fastapi
+    ports:
+      - "8000:8000"
+      - "5678:5678"  # Debugging port
+    volumes:
+      - ./backend:/backend
+      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - debug=${DEBUG}
+    env_file:
+      - .env
+    depends_on:
+      - mongo
+    networks:
+      - app-network
+      - session_example
+    restart: always
+    develop:
+      watch:
+        - path: ./backend/app
+          target: /backend/app
+          action: sync+restart
+        - path: ./backend/requirements.txt
+          target: /backend/requirements.txt
+          action: rebuild
+    command: >
+      python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.fastapi.loadbalancer.server.port=8000"
+      - "traefik.http.routers.fastapi.rule=Host(\"fastapi.cloudsession.cloud\")"
+      - "traefik.http.routers.fastapi.entrypoints=web"
+  mongo:
+    image: mongo
+    container_name: docker-mongo-1
+    command: ["mongod", "--wiredTigerCacheSizeGB", "0.5"]
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+    volumes:
+      - mongodb:/data/db
+      - ./scripts/mongo-init:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+    mem_limit: 1g
+    hostname: mongo
+
+  mongo_express:
+    image: mongo-express:latest
+    container_name: mongo_insight
+    depends_on:
+      - mongo
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=${MONGO_HOST}
+      - ME_CONFIG_MONGODB_PORT=${MONGO_PORT}
+      - ME_CONFIG_MONGODB_ENABLE_ADMIN=${MONGO_ADMIN_ENABLE}
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGO_ADMIN_USERNAME}
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGO_ADMIN_PASSWORD}
+      - ME_CONFIG_BASICAUTH_USERNAME=${MONGO_EXPRESS_USER}
+      - ME_CONFIG_BASICAUTH_PASSWORD=${MONGO_EXPRESS_PASS}
+    networks:
+      - app-network
+    hostname: mongo-express
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    restart: always
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./data/qdrant/data:/qdrant/storage
+    networks:
+      - app-network
+
+  redis:
+    image: redis:8.0
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+    restart: always
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"      # 메시징 포트
+      - "15672:15672"    # 웹 UI 포트
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - app-network
+    restart: always
+
+  mongo-seed:
+    image: google/cloud-sdk:alpine # ✅ 약 300MB, gsutil 포함, 인증도 가능
+    depends_on:
+      - mongo
+    build:
+      context: .
+      dockerfile: scripts/mongo-init/mongo-seed.Dockerfile
+    volumes:
+      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+      - ./scripts/mongo-init:/docker-entrypoint-initdb.d
+    environment:
+      - GCS_BUCKET=${GCS_BUCKET}
+      - MONGO_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
+      - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
+    entrypoint: >
+        bash -c "
+        gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS && \
+        echo '✅ GCS에서 JSON 다운로드 시작' && \
+        mkdir -p /data/db/collections && \
+        gsutil cp gs://${GCS_BUCKET}/mongo/danawa_products.json /data/db/collections/danawa_products.json && \
+        gsutil cp gs://${GCS_BUCKET}/mongo/interior_types.json /data/db/collections/interior_types.json && \
+        echo '✅ mongoimport 시작' && \
+        sleep 10 && \
+        mongoimport --host mongo --db=interior_db --collection=danawa_products --file=/data/db/collections/danawa_products.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin && \
+        mongoimport --host mongo --db=interior_db --collection=interior_types --file=/data/db/collections/interior_types.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin
+        "
+    networks:
+      - app-network
+
+  qdrant-seed:
+    build:
+      context: .
+      dockerfile: scripts/qdrant-init/qdrant-seed.Dockerfile
+    depends_on:
+      - qdrant
+    volumes:
+      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+      - ./scripts/qdrant-init/upload_qdrant.py:/upload_qdrant.py
+    environment:
+      - GCS_BUCKET=${GCS_BUCKET}
+      - GCS_QDRANT_EMBEDDINGS_JSON=${GCS_QDRANT_EMBEDDINGS_JSON}
+      - QDRANT_URL=${QDRANT_URL}
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION}
+      - QDRANT_VECTOR_SIZE=${QDRANT_VECTOR_SIZE}
+      - QDRANT_DISTANCE=${QDRANT_DISTANCE}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
+    entrypoint: [ "python", "/upload_qdrant.py" ]
+    networks:
+      - app-network
+
+  celery_worker:
+    build: ./backend
+    container_name: celery_worker
+    command: celery -A app.interior.tasks.qdrant_tasks worker --loglevel=info
+    volumes:
+      - ./backend:/backend
+      - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - qdrant
+      - rabbitmq
+      - mongo
+    networks:
+      - app-network
+    restart: always
+
+
+  traefik:
+    image: traefik:v2.9
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true" 
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=app-network"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=INFO" # 로그 관련 설정
+      - "--accesslog=true" # 로그 관련 설정
+      - "--accesslog.filepath=/logs/access.log" # 로그 관련 설정
+      - "--accesslog.bufferingsize=100" # 로그 관련 설정
+      - "--accesslog.format=json" # 로그 관련 설정
+      - "--accesslog.fields.defaultmode=keep" # 로그 관련 설정
+      - "--accesslog.fields.headers.defaultmode=keep" # 로그 관련 설정
+      - "--accesslog.fields.headers.names.X-Forwarded-For=keep" # 로그 관련 설정
+      - "--api.dashboard=true"
+      - "--metrics.prometheus=true" # 메트릭 활성화
+      - "--metrics.prometheus.buckets=0.100000, 0.300000, 1.200000, 5.000000"
+      - "--metrics.prometheus.addEntryPointsLabels=true" # 라벨링 추가
+      - "--metrics.prometheus.addServicesLabels=true" # 라벨링 추가
+      - "--entryPoints.metrics.address=:8091" # 메트릭 포트 설정
+      - "--metrics.prometheus.entryPoint=metrics" # /metrics로 노출
+    ports:
+      - "80:80" # http
+    # - "443:443" # https
+      - "8080:8080" # 대시보드
+      - "8091:8091" # 메트릭
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - ./logs/traefik:/logs
+    networks:
+      - app-network
+    labels:
+      - "traefik.enable=true"
+
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:                 # ✅ 이거 추가
+    - app-network
+
+  grafana:
+    image: grafana/grafana:9.5.20
+    user: root
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    networks:
+      - app-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.cloudsession.cloud`)"
+      - "traefik.http.routers.grafana.entrypoints=web"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+  mongodb_exporter:
+    image: bitnami/mongodb-exporter:latest
+    container_name: mongodb_exporter
+    environment:
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017
+    ports:
+      - "9216:9216"
+    depends_on:
+      - mongo
+    networks:
+      - app-network
+  redis_exporter:
+    image: oliver006/redis_exporter
+    ports:
+      - "9121:9121"
+    depends_on:
+      - redis
+    networks:
+      - app-network
+
+  rabbitmq_exporter:
+    image: kbudde/rabbitmq-exporter
+    ports:
+      - "9419:9419"
+    environment:
+      - RABBIT_URL=http://rabbitmq:15672
+      - RABBIT_USER=guest
+      - RABBIT_PASSWORD=guest
+    depends_on:
+      - rabbitmq
+    networks:
+      - app-network
+
+  celery_exporter:
+    image: danihodovic/celery-exporter:latest
+    container_name: celery_exporter
+    ports:
+      - "9808:9808"  # 외부에서 접근 가능하도록 노출
+    depends_on:
+      - redis
+      - celery_worker
+    environment:
+      - CE_BROKER_URL=redis://redis:6379/0
+    networks:
+      - app-network
+
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mongodb:
+  redis-data:
+  rabbitmq-data:
+  grafana_data:
