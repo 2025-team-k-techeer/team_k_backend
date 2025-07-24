@@ -205,7 +205,6 @@ services:
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"       # ✅ HTTP → HTTPS 리디렉션
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"       # ✅ Let's Encrypt 자동 인증서 발급 설정
-      - "--certificatesresolvers.letsencrypt.acme.email=chlwogus180kr@gmail.com"
       - "--certificatesresolvers.letsencrypt.acme.email=hnn07185@gmail.com"  # ← 본인 이메일 입력
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
 
