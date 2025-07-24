@@ -13,8 +13,11 @@ deploy_to_gce:
     # SSH 인증 에이전트 시작
     - eval $(ssh-agent -s)
 
+    # GitLab 환경변수에서 SSH 비공개 키 로드 테스트
+    - echo "$GCE_SSH_PRIVATE_KEY" | head -n 2
+
     # GitLab 환경변수에 등록된 SSH 비공개 키를 SSH 에이전트에 등록
-    - echo "$GCE_SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - cat "$GCE_SSH_PRIVATE_KEY" | ssh-add -
 
     # SSH 설정 디렉토리 생성
     - mkdir -p ~/.ssh
