@@ -24,3 +24,6 @@ docker-deploy-up:
 docker-deploy-down:
 	docker compose -f deploy-docker-compose.yml down
 
+docker-deploy-logs:
+	docker compose -f deploy-docker-compose.yml logs -f
+
