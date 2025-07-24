@@ -4,7 +4,7 @@ services:
     container_name: fastapi
     ports:
       - "8000:8000"
-      - "5678:5678"  # Debugging port
+      # - "5678:5678"  # Debugging port
     volumes:
       - ./backend:/backend
       - .${GOOGLE_APPLICATION_CREDENTIALS}:${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
@@ -17,7 +17,6 @@ services:
       - mongo
     networks:
       - app-network
-      - session_example
     restart: always
     develop:
       watch:
@@ -28,12 +27,15 @@ services:
           target: /backend/requirements.txt
           action: rebuild
     command: >
-      python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+              gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
     labels:
       - "traefik.enable=true"
+      - "traefik.http.routers.fastapi.rule=Host(`api.zipkku.shop`)"
+      - "traefik.http.routers.fastapi.entrypoints=websecure"
+      - "traefik.http.routers.fastapi.tls=true"  # ✅ 이 줄 꼭 있어야 함
+      - "traefik.http.routers.fastapi.tls.certresolver=letsencrypt"
       - "traefik.http.services.fastapi.loadbalancer.server.port=8000"
-      - "traefik.http.routers.fastapi.rule=Host(\"fastapi.cloudsession.cloud\")"
-      - "traefik.http.routers.fastapi.entrypoints=web"
+      - "traefik.docker.network=app-network"
   mongo:
     image: mongo
     container_name: docker-mongo-1
@@ -185,6 +187,7 @@ services:
       - "--providers.docker=true" 
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network=app-network"
+
       - "--entrypoints.web.address=:80"
       - "--log.level=INFO" # 로그 관련 설정
       - "--accesslog=true" # 로그 관련 설정
@@ -201,15 +204,33 @@ services:
       - "--metrics.prometheus.addServicesLabels=true" # 라벨링 추가
       - "--entryPoints.metrics.address=:8091" # 메트릭 포트 설정
       - "--metrics.prometheus.entryPoint=metrics" # /metrics로 노출
+            # ✅ 기본 HTTP 포트
+      - "--entrypoints.web.address=:80"
+
+      # ✅ HTTPS 엔트리포인트 추가
+      - "--entrypoints.websecure.address=:443"
+
+      # ✅ HTTP → HTTPS 리디렉션
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+
+      # ✅ Let's Encrypt 자동 인증서 발급 설정
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=chlwogus180kr@gmail.com"
+      # - "--certificatesresolvers.letsencrypt.acme.email=hnn07185@gmail.com"  # ← 본인 이메일 입력
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+
     ports:
       - "80:80" # http
-    # - "443:443" # https
+      - "443:443" # https
       - "8080:8080" # 대시보드
       - "8091:8091" # 메트릭
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
+      - traefik-certs:/letsencrypt   # 🔥 인증서 저장소
     networks:
       - app-network
+      - default
     labels:
       - "traefik.enable=true"
 
@@ -291,10 +312,11 @@ services:
 networks:
   app-network:
     driver: bridge
-  session_example:
-    driver: bridge
+    name: app-network
 volumes:
   mongodb:
   redis-data:
   rabbitmq-data:
   grafana_data:
+  qdrant_data:
+  traefik-certs:
