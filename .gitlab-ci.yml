@@ -32,7 +32,8 @@ deploy_to_gce:
 
     # 2. GCE 서버의 프로젝트 디렉토리로 .env 파일 전송
     - scp .env $GCE_USER@$GCE_HOST:~/my-app/.env
-
+    # 2-1. GCE 서버의 Google Cloud 변수 따로 설정.
+    - export GOOGLE_APPLICATION_CREDENTIALS="$GOOGLE_APPLICATION_CREDENTIALS"
     # 3. GCE 서버에 SSH 접속해서 아래 명령어 실행
     - ssh $GCE_USER@$GCE_HOST '
       cd ~/my-app &&
