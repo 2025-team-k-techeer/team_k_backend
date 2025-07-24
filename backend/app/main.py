@@ -13,3 +13,7 @@ app.include_router(user_controller.router)
 app.include_router(interior_controller.router)
 # 👉 Prometheus metrics 등록
 Instrumentator().instrument(app).expose(app)
+
+from app.interior.interface.controller.ar_controller import router as ar_router
+
+app.include_router(ar_router)
