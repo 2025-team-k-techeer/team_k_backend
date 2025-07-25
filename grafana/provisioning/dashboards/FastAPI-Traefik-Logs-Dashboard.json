@@ -1,0 +1,75 @@
+{
+  "uid": "fastapi-traefik-logs",
+  "title": "FastAPI & Traefik Logs Dashboard",
+  "timezone": "browser",
+  "schemaVersion": 37,
+  "version": 1,
+  "panels": [
+    {
+      "title": "📦 FastAPI 전체 로그",
+      "type": "logs",
+      "datasource": "Loki-2",
+      "targets": [
+        {
+          "expr": "{container=\"fastapi\"}"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 }
+    },
+    {
+      "title": "🚨 FastAPI ERROR 로그",
+      "type": "logs",
+      "datasource": "Loki-2",
+      "targets": [
+        {
+          "expr": "{container=\"fastapi\"} |= \"ERROR\""
+        }
+      ],
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 6 }
+    },
+    {
+      "title": "📈 FastAPI 요청 수 (1분 단위)",
+      "type": "timeseries",
+      "datasource": "Loki-2",
+      "targets": [
+        {
+          "expr": "count_over_time({container=\"fastapi\"}[1m])"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 14, "w": 24, "h": 6 }
+    },
+    {
+      "title": "📦 Traefik 전체 로그",
+      "type": "logs",
+      "datasource": "Loki-2",
+      "targets": [
+        {
+          "expr": "{container=\"traefik\"}"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 20, "w": 24, "h": 8 }
+    },
+    {
+      "title": "🚨 Traefik Error/Warning 로그",
+      "type": "logs",
+      "datasource": "Loki-2",
+      "targets": [
+        {
+          "expr": "{container=\"traefik\"} |= \"error\" or |= \"warn\""
+        }
+      ],
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 6 }
+    },
+    {
+      "title": "🔀 Traefik 요청 로그 (Handled request)",
+      "type": "logs",
+      "datasource": "Loki-2",
+      "targets": [
+        {
+          "expr": "{container=\"traefik\"} |= \"Handled request\""
+        }
+      ],
+      "gridPos": { "x": 0, "y": 34, "w": 24, "h": 6 }
+    }
+  ]
+} 

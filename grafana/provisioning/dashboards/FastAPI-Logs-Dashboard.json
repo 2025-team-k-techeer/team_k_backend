@@ -1,0 +1,64 @@
+{
+  "uid": "fastapi-logs",
+  "title": "FastAPI Logs Dashboard",
+  "timezone": "browser",
+  "panels": [
+    {
+      "title": "📦 전체 로그 보기",
+      "type": "logs",
+      "datasource": "Loki-2",
+      "targets": [
+        {
+          "expr": "{container=\"fastapi\"}"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 }
+    },
+    {
+      "title": "📈 요청 수 (1분 단위)",
+      "type": "timeseries",
+      "datasource": "Loki-2",
+      "targets": [
+        {
+          "expr": "count_over_time({container=\"fastapi\"}[1m])"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 10, "w": 24, "h": 8 }
+    },
+    {
+      "title": "🔍 /metrics 요청",
+      "type": "logs",
+      "datasource": "Loki-2",
+      "targets": [
+        {
+          "expr": "{container=\"fastapi\"} |= \"/metrics\""
+        }
+      ],
+      "gridPos": { "x": 0, "y": 18, "w": 24, "h": 8 }
+    },
+    {
+      "title": "🚨 ERROR 로그",
+      "type": "logs",
+      "datasource": "Loki-2",
+      "targets": [
+        {
+          "expr": "{container=\"fastapi\"} |= \"ERROR\""
+        }
+      ],
+      "gridPos": { "x": 0, "y": 26, "w": 24, "h": 8 }
+    },
+    {
+      "title": "🟢 서버 시작 로그",
+      "type": "logs",
+      "datasource": "Loki-2",
+      "targets": [
+        {
+          "expr": "{container=\"fastapi\"} |= \"Application startup\""
+        }
+      ],
+      "gridPos": { "x": 0, "y": 34, "w": 24, "h": 6 }
+    }
+  ],
+  "schemaVersion": 37,
+  "version": 1
+} 
