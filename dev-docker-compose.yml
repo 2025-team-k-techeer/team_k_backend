@@ -17,7 +17,6 @@ services:
       - mongo
     networks:
       - app-network
-      - session_example
     restart: always
     develop:
       watch:
@@ -34,6 +33,7 @@ services:
       - "traefik.http.services.fastapi.loadbalancer.server.port=8000"
       - "traefik.http.routers.fastapi.rule=Host(\"fastapi.cloudsession.cloud\")"
       - "traefik.http.routers.fastapi.entrypoints=web"
+      - "logging=promtail"
   mongo:
     image: mongo
     container_name: docker-mongo-1
@@ -288,6 +288,29 @@ services:
       - celery_worker
     environment:
       - CE_BROKER_URL=redis://redis:6379/0
+    networks:
+      - app-network
+
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - 3100:3100
+    command: -config.file=/etc/loki/local-config.yaml #기본 설정
+    networks:
+      - app-network
+
+  promtail:
+    image:  grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./promtail/config.yaml:/etc/promtail/docker-config.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro #도커 로그
+      - /var/run/docker.sock:/var/run/docker.sock #도커 소켓 (디몬)
+    command:
+      - -config.file=/etc/promtail/docker-config.yaml #설정파일
+      - -config.expand-env=true #환경변수 수집용. 안해도 됩니다.
+    depends_on:
+      - loki
     networks:
       - app-network
 
