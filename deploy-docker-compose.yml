@@ -249,8 +249,13 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.grafana.rule=Host(`grafana.zipkku.shop`)"
-      - "traefik.http.routers.grafana.entrypoints=web"
+      - "traefik.http.routers.grafana.entrypoints=web,websecure"                     # ✅ HTTP + HTTPS
+      - "traefik.http.routers.grafana.tls=true"  # ✅ HTTPS 활성화
+      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"  # ✅ Let's Encrypt 인증서 사용
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.docker.network=app-network"                                         # ✅ 네트워크 명시
+
+
   mongodb_exporter:
     image: bitnami/mongodb-exporter:latest
     container_name: mongodb_exporter

@@ -3,9 +3,27 @@ from fastapi import FastAPI
 from app.user.interface.controller import user_controller
 from app.interior.interface.controller import interior_controller
 from prometheus_fastapi_instrumentator import Instrumentator
+from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
+
+
+# 허용할 origin 리스트
+origins = [
+    "https://zipkku.shop",  # 프론트엔드 도메인
+    "http://localhost:5173",  # ✅ Vite 기본 포트
+    # "*",  # 모든 origin 허용 (개발용)
+]
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # "*"을 넣으면 모든 origin 허용 (개발용)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # 라우터 등록

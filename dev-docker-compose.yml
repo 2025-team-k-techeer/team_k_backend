@@ -96,7 +96,7 @@ services:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - "5724:5672"      # 메시징 포트
+      - "5724:5672"      # 메시징 포트 개발 포트 점유로 인해 임시로 변경
       - "15672:15672"    # 웹 UI 포트
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
