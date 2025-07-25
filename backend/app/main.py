@@ -13,6 +13,7 @@ app = FastAPI()
 origins = [
     "https://zipkku.shop",  # 프론트엔드 도메인
     "http://localhost:5173",  # ✅ Vite 기본 포트
+    "https://localhost:5173",  # ✅ Vite 기본 포트
     # "*",  # 모든 origin 허용 (개발용)
 ]
 
