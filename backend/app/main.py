@@ -23,7 +23,14 @@ app.add_middleware(
     allow_origins=origins,  # "*"을 넣으면 모든 origin 허용 (개발용)
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-Requested-With",
+        "Accept",
+        "Origin",
+        "Referer",
+    ],
 )
 
 
