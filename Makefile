@@ -27,3 +27,6 @@ docker-deploy-down:
 docker-deploy-logs:
 	docker compose -f deploy-docker-compose.yml logs -f
 
+docker-deploy-down-v:
+	docker compose -f deploy-docker-compose.yml down -v
+
