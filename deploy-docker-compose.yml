@@ -35,7 +35,6 @@ services:
       - "traefik.http.routers.fastapi.tls.certresolver=letsencrypt"
       - "traefik.http.services.fastapi.loadbalancer.server.port=8000"
       - "traefik.docker.network=app-network"
-            # :white_check_mark: CORS 미들웨어 정의
       - "traefik.http.middlewares.fastapi-cors.headers.accesscontrolallowmethods=GET,POST,OPTIONS,PUT,DELETE"
       - "traefik.http.middlewares.fastapi-cors.headers.accesscontrolalloworiginlist=https://zipkku.shop"
       - "traefik.http.middlewares.fastapi-cors.headers.accesscontrolallowheaders=*"
@@ -43,6 +42,7 @@ services:
       - "traefik.http.middlewares.fastapi-cors.headers.addvaryheader=true"
             # :white_check_mark: CORS 미들웨어 적용
       - "traefik.http.routers.fastapi.middlewares=fastapi-cors"
+
   mongo:
     image: mongo
     container_name: docker-mongo-1
