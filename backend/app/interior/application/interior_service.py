@@ -13,6 +13,7 @@ from app.interior.domain.repository.interior_repository import InteriorRepositor
 from app.integrations.replicate import ReplicateService
 from app.interior.schemas.mappers import domain_to_interior_generate_response
 from app.config import get_settings
+from app.utils.logger import get_logger
 
 # GCS 관련 import 추가
 from google.cloud import storage
@@ -27,6 +28,7 @@ import time
 from dataclasses import dataclass
 
 settings = get_settings()
+logger = get_logger("interior_service")
 
 YOLO_CLIP_API_URL = "https://yolo-clip-api-604858116968.asia-northeast3.run.app/process"
 QDRANT_SEARCH_URL = settings.QDRANT_SEARCH_URL
@@ -86,9 +88,9 @@ class InteriorService:
         인테리어 이미지 생성 → 객체 인식 및 임베딩 추출 → Qdrant 검색 → 결과 가공 및 응답 생성
         """
         try:
-            print("🚀 인테리어 생성 프로세스 시작...")
+            logger.info("🚀 인테리어 생성 프로세스 시작...")
             # 1. 인테리어 이미지 생성
-            print("🎨 Replicate로 인테리어 이미지 생성 중...")
+            logger.info("🎨 Replicate로 인테리어 이미지 생성 중...")
             generated_image_url = await self._generate_interior_image(
                 image_url, room_type, style, prompt
             )
@@ -116,22 +118,22 @@ class InteriorService:
             generated_image_url = (
                 f"https://storage.googleapis.com/{bucket_name}/{blob_path}"
             )
-            print(f"✅ GCS 업로드 완료: {generated_image_url}")
+            logger.info(f"✅ GCS 업로드 완료: {generated_image_url}")
             # === GCS 업로드 완료 ===
 
             # 2. YOLO+CLIP 서버로 객체 인식 및 임베딩 추출
-            print("🔍 YOLO+CLIP으로 객체 인식 및 임베딩 추출 중...")
+            logger.info("🔍 YOLO+CLIP으로 객체 인식 및 임베딩 추출 중...")
             yolo_results = await self._detect_furniture_with_yolo_clip(
                 generated_image_url
             )
-            print(f"📦 객체 인식 완료: {len(yolo_results)}개 객체 발견")
+            logger.info(f"📦 객체 인식 완료: {len(yolo_results)}개 객체 발견")
 
             # 3. Qdrant 검색 태스크 실행 및 polling
-            print("🔎 Qdrant 유사도 검색 시작...")
+            logger.info("🔎 Qdrant 유사도 검색 시작...")
             detected_furnitures = await self._search_qdrant_for_furnitures(yolo_results)
 
             # 4. DB에서 상품 정보 조회 및 Qdrant 결과로 enrich
-            print("💾 DB 상품 정보 조회 및 데이터 enrich 중...")
+            logger.info("💾 DB 상품 정보 조회 및 데이터 enrich 중...")
             await self._enrich_furnitures_with_db_and_qdrant(detected_furnitures)
 
             # 5. 각 가구(FurnitureDetected) 객체를 DB에 저장하고, id만 리스트로 추출
@@ -161,10 +163,11 @@ class InteriorService:
             await self.interior_repository.create(interior)
 
             # 7. 최종 응답 생성 (interior와 실제 가구 객체 리스트를 함께 반환)
-            print("🎉 인테리어 생성 완료!")
+            logger.info("🎉 인테리어 생성 완료!")
             return domain_to_interior_generate_response(interior, detected_furnitures)
 
         except Exception as e:
+            logger.error(f"인테리어 생성 중 오류 발생: {str(e)}")
             raise Exception(f"인테리어 생성 중 오류 발생: {str(e)}")
 
     async def _detect_furniture_with_yolo_clip(self, image_url: str):
@@ -196,15 +199,18 @@ class InteriorService:
         timeout_sec = 30
         interval_sec = 0.5
         start = time.time()
-        print(f"🔄 Qdrant 검색 태스크 시작: {len(celery_results)}개 객체")
+        logger.info(f"🔄 Qdrant 검색 태스크 시작: {len(celery_results)}개 객체")
         while True:
             ready_count = sum(1 for _, r, _, _ in celery_results if r.ready())
             if ready_count == len(celery_results):
-                print(f"✅ Qdrant 검색 완료: {ready_count}/{len(celery_results)}개")
+                logger.info(
+                    f"✅ Qdrant 검색 완료: {ready_count}/{len(celery_results)}개"
+                )
                 break
             if time.time() - start > timeout_sec:
+                logger.error("Qdrant 검색 태스크 timeout")
                 raise Exception("Qdrant 검색 태스크 timeout")
-            print(
+            logger.debug(
                 f"⏳ Qdrant 검색 진행 중: {ready_count}/{len(celery_results)}개 완료..."
             )
             await asyncio.sleep(interval_sec)

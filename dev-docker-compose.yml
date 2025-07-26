@@ -7,11 +7,11 @@ services:
       - "5725:5725"  # Debugging port
     volumes:
       - ./backend:/backend
-      - ./${GOOGLE_APPLICATION_CREDENTIALS}:/${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+      - ./key/wise-vault-465615-r2-f259679465ef.json:/key/wise-vault-465615-r2-f259679465ef.json:ro
     environment:
       - MONGO_URI=${MONGO_URI}
       - debug=${DEBUG}
-      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
+      - GOOGLE_APPLICATION_CREDENTIALS=/key/wise-vault-465615-r2-f259679465ef.json
 
     env_file:
       - .env
@@ -29,7 +29,7 @@ services:
           target: /backend/requirements.txt
           action: rebuild
     command: >
-      python -m debugpy --listen 0.0.0.0:5725 --wait-for-client -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      python -m debugpy --listen 0.0.0.0:5725 --wait-for-client -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level info
     labels:
       - "traefik.enable=true"
       - "traefik.http.services.fastapi.loadbalancer.server.port=8000"

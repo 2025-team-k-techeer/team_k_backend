@@ -15,10 +15,13 @@ from app.user.dependencies import (
     get_user_service,
     get_current_user_id_bearer,
 )
+import logging
 from app.interior.dependencies import get_interior_service
 from app.interior.application.interior_service import InteriorService
+from app.utils.logger import get_logger
 
 router = APIRouter(prefix="/users", tags=["User Api"])
+logger = get_logger("user_controller")
 
 # OAuth2 스키마 정의
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="users/login")
@@ -36,15 +39,25 @@ async def create_user(
 ):
     """사용자 회원가입"""
     try:
+        logger.info(f"회원가입 요청 - 이메일: {user.email}, 이름: {user.name}")
+
         await user_service.create_user(
             name=user.name,
             email=user.email,
             password=user.password,
         )
+
+        logger.info(f"회원가입 성공 - 이메일: {user.email}")
         return {"status": "success", "message": "회원가입이 완료되었습니다."}
     except ValueError as e:
+        logger.warning(
+            f"회원가입 실패 (검증 오류) - 이메일: {user.email}, 오류: {str(e)}"
+        )
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        logger.error(
+            f"회원가입 실패 (서버 오류) - 이메일: {user.email}, 오류: {str(e)}"
+        )
         raise HTTPException(status_code=500, detail=f"서버 내부 오류: {str(e)}")
 
 
@@ -85,9 +98,13 @@ async def login(
 ):
     """OAuth2 표준 토큰 발급 (Bearer 토큰)"""
     try:
+        logger.info(f"로그인 요청 - 사용자: {form_data.username}")
+
         access_token, refresh_token = await user_service.login_user(
             form_data.username, form_data.password
         )
+
+        logger.info(f"로그인 성공 - 사용자: {form_data.username}")
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
@@ -95,6 +112,9 @@ async def login(
             "expires_in": 3600,  # 1시간
         }
     except ValueError as e:
+        logger.warning(
+            f"로그인 실패 (인증 오류) - 사용자: {form_data.username}, 오류: {str(e)}"
+        )
         raise HTTPException(
             status_code=401,
             detail="Incorrect username or password",

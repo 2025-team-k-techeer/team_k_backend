@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,6 +42,10 @@ class Settings(BaseSettings):
     # Celery settings
     CELERY_BROKER_URL: str
     CELERY_RESULT_BACKEND: str
+
+    # Logging settings
+    LOG_LEVEL: str = "INFO"
+    LOG_FILE: Optional[str] = None  # 로그 파일 경로 (예: "/logs/app.log")
 
     # database_password: str
     # jwt_secret: str
