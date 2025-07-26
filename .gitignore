@@ -3,13 +3,15 @@
 # etc
 *.json
 
+.data/
+
 # 기본적으로 .data는 추적함
 !data/
 
 # 해당 폴더 내부는 모두 추적
 !data/qdrant/
 !data/qdrant/data/
-!data/qdrant/data/collections/
+.data/qdrant/data/collections/
 
 # 단, 특정 폴더만 무시
 data/qdrant/data/collections/furniture_embeddings/
