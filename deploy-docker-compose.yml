@@ -39,7 +39,6 @@ services:
       - "traefik.docker.network=app-network"
       - "traefik.http.middlewares.fastapi-cors.headers.accesscontrolallowmethods=GET,POST,OPTIONS,PUT,DELETE"
       - "traefik.http.middlewares.fastapi-cors.headers.accesscontrolalloworiginlist=https://zipkku.shop"
-      - "traefik.http.middlewares.fastapi-cors.headers.accesscontrolallowheaders=*"
       - "traefik.http.middlewares.fastapi-cors.headers.accesscontrolallowcredentials=true"
       - "traefik.http.middlewares.fastapi-cors.headers.addvaryheader=true"
             # :white_check_mark: CORS 미들웨어 적용
