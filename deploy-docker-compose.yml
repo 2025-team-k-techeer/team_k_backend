@@ -7,10 +7,9 @@ services:
       # - "5678:5678"  # Debugging port
     volumes:
       - ./backend:/backend
-      - ./key/wise-vault-465615-r2-f259679465ef.json:/key/wise-vault-465615-r2-f259679465ef.json:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+      - ./${GOOGLE_APPLICATION_CREDENTIALS}:/${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
     environment:
       - MONGO_URI=${MONGO_URI}
-      - GOOGLE_APPLICATION_CREDENTIALS=/key/wise-vault-465615-r2-f259679465ef.json
     env_file:
       - .env
     depends_on:
@@ -32,10 +31,18 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.fastapi.rule=Host(`api.zipkku.shop`)"
       - "traefik.http.routers.fastapi.entrypoints=websecure"
-      - "traefik.http.routers.fastapi.tls=true"  # ✅ 이 줄 꼭 있어야 함
+      - "traefik.http.routers.fastapi.tls=true"  # :white_check_mark: 이 줄 꼭 있어야 함
       - "traefik.http.routers.fastapi.tls.certresolver=letsencrypt"
       - "traefik.http.services.fastapi.loadbalancer.server.port=8000"
       - "traefik.docker.network=app-network"
+            # :white_check_mark: CORS 미들웨어 정의
+      - "traefik.http.middlewares.fastapi-cors.headers.accesscontrolallowmethods=GET,POST,OPTIONS,PUT,DELETE"
+      - "traefik.http.middlewares.fastapi-cors.headers.accesscontrolalloworiginlist=https://zipkku.shop"
+      - "traefik.http.middlewares.fastapi-cors.headers.accesscontrolallowheaders=*"
+      - "traefik.http.middlewares.fastapi-cors.headers.accesscontrolallowcredentials=true"
+      - "traefik.http.middlewares.fastapi-cors.headers.addvaryheader=true"
+            # :white_check_mark: CORS 미들웨어 적용
+      - "traefik.http.routers.fastapi.middlewares=fastapi-cors"
   mongo:
     image: mongo
     container_name: docker-mongo-1
@@ -52,7 +59,6 @@ services:
       - app-network
     mem_limit: 1g
     hostname: mongo
-
   mongo_express:
     image: mongo-express:latest
     container_name: mongo_insight
@@ -71,7 +77,6 @@ services:
     networks:
       - app-network
     hostname: mongo-express
-
   qdrant:
     image: qdrant/qdrant:latest
     container_name: qdrant
@@ -83,7 +88,6 @@ services:
       - ./data/qdrant/data:/qdrant/storage
     networks:
       - app-network
-
   redis:
     image: redis:8.0
     container_name: redis
@@ -94,7 +98,6 @@ services:
     networks:
       - app-network
     restart: always
-
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
@@ -109,7 +112,6 @@ services:
     networks:
       - app-network
     restart: always
-
   mongo-seed:
     depends_on:
     - mongo
@@ -127,12 +129,12 @@ services:
     entrypoint: >
         bash -c "
         gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS && \
-        echo '✅ GCS에서 JSON 다운로드 시작' && \
+        echo ':white_check_mark: GCS에서 JSON 다운로드 시작' && \
         mkdir -p /data/db/collections && \
         gsutil cp gs://${GCS_BUCKET}/mongo/danawa_products.json /data/db/collections/danawa_products.json && \
         gsutil cp gs://${GCS_BUCKET}/mongo/interior_types.json /data/db/collections/interior_types.json && \
         gsutil cp gs://${GCS_BUCKET}/mongo/ar_chair_documents.json /data/db/collections/ar_chair_documents.json && \
-        echo '✅ mongoimport 시작' && \
+        echo ':white_check_mark: mongoimport 시작' && \
         sleep 10 && \
         mongoimport --host mongo --db=interior_db --collection=danawa_products --file=/data/db/collections/danawa_products.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin && \
         mongoimport --host mongo --db=interior_db --collection=interior_types --file=/data/db/collections/interior_types.json --jsonArray --username $${MONGO_ROOT_USERNAME} --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin && \
@@ -140,7 +142,6 @@ services:
         "
     networks:
       - app-network
-
   qdrant-seed:
     build:
       context: .
@@ -161,7 +162,6 @@ services:
     entrypoint: [ "python", "/upload_qdrant.py" ]
     networks:
       - app-network
-
   celery_worker:
     build: ./backend
     container_name: celery_worker
@@ -179,8 +179,6 @@ services:
     networks:
       - app-network
     restart: always
-
-
   traefik:
     image: traefik:v2.9
     command:
@@ -204,13 +202,12 @@ services:
       - "--metrics.prometheus.addServicesLabels=true" # 라벨링 추가
       - "--entryPoints.metrics.address=:8091" # 메트릭 포트 설정
       - "--metrics.prometheus.entryPoint=metrics" # /metrics로 노출
-      - "--entrypoints.websecure.address=:443"       # ✅ HTTPS 엔트리포인트 추가
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"       # ✅ HTTP → HTTPS 리디렉션
+      - "--entrypoints.websecure.address=:443"       # :white_check_mark: HTTPS 엔트리포인트 추가
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"       # :white_check_mark: HTTP → HTTPS 리디렉션
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"       # ✅ Let's Encrypt 자동 인증서 발급 설정
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"       # :white_check_mark: Let's Encrypt 자동 인증서 발급 설정
       - "--certificatesresolvers.letsencrypt.acme.email=hnn07185@gmail.com"  # ← 본인 이메일 입력
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
-
     ports:
       - "80:80" # http
       - "443:443" # https
@@ -218,13 +215,11 @@ services:
       - "8091:8091" # 메트릭
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - traefik-certs:/letsencrypt   # 🔥 인증서 저장소
+      - traefik-certs:/letsencrypt   # :fire: 인증서 저장소
     networks:
       - app-network
     labels:
       - "traefik.enable=true"
-
-
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -234,9 +229,8 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
-    networks:                 # ✅ 이거 추가
+    networks:                 # :white_check_mark: 이거 추가
     - app-network
-
   grafana:
     image: grafana/grafana:9.5.20
     user: root
@@ -250,13 +244,11 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.grafana.rule=Host(`grafana.zipkku.shop`)"
-      - "traefik.http.routers.grafana.entrypoints=web,websecure"                     # ✅ HTTP + HTTPS
-      - "traefik.http.routers.grafana.tls=true"  # ✅ HTTPS 활성화
-      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"  # ✅ Let's Encrypt 인증서 사용
+      - "traefik.http.routers.grafana.entrypoints=web,websecure"                     # :white_check_mark: HTTP + HTTPS
+      - "traefik.http.routers.grafana.tls=true"  # :white_check_mark: HTTPS 활성화
+      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"  # :white_check_mark: Let's Encrypt 인증서 사용
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
-      - "traefik.docker.network=app-network"                                         # ✅ 네트워크 명시
-
-
+      - "traefik.docker.network=app-network"                                         # :white_check_mark: 네트워크 명시
   mongodb_exporter:
     image: bitnami/mongodb-exporter:latest
     container_name: mongodb_exporter
@@ -276,7 +268,6 @@ services:
       - redis
     networks:
       - app-network
-
   rabbitmq_exporter:
     image: kbudde/rabbitmq-exporter
     ports:
@@ -289,7 +280,6 @@ services:
       - rabbitmq
     networks:
       - app-network
-
   celery_exporter:
     image: danihodovic/celery-exporter:latest
     container_name: celery_exporter
@@ -302,13 +292,10 @@ services:
       - CE_BROKER_URL=redis://redis:6379/0
     networks:
       - app-network
-
-
 networks:
   app-network:
     driver: bridge
     name: app-network
-
 volumes:
   mongodb:
   redis-data:
