@@ -7,10 +7,12 @@ services:
       - "5725:5725"  # Debugging port
     volumes:
       - ./backend:/backend
-      - .${GOOGLE_APPLICATION_CREDENTIALS}:/${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+      - ./${GOOGLE_APPLICATION_CREDENTIALS}:/${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
     environment:
       - MONGO_URI=${MONGO_URI}
       - debug=${DEBUG}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
+
     env_file:
       - .env
     depends_on:
