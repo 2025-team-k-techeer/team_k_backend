@@ -3,6 +3,7 @@ from app.user.dependencies import get_current_user_id_bearer
 from app.interior.dependencies import get_interior_service, get_gcs_service
 from app.interior.application.interior_service import InteriorService
 from app.integrations.gcs import GCSService
+from app.utils.logger import get_logger
 from app.interior.schemas.interior_schema import (
     InteriorGenerateRequest,
     InteriorGenerateResponse,
@@ -22,7 +23,7 @@ from app.interior.schemas.mappers import (
 )
 
 router = APIRouter(prefix="/interiors", tags=["Interior Api"])
-
+logger = get_logger("interior_controller")
 
 # JWT 토큰 검증은 user 모듈의 의존성 함수를 사용합니다
 # 쿠키 기반: get_current_user_id
@@ -43,14 +44,20 @@ async def upload_image(
     - 업로드된 이미지의 공개 URL과 실제 저장된 파일명을 반환합니다
     """
     try:
+        logger.info(f"이미지 업로드 요청 - 사용자: {user_id}, 파일명: {image.filename}")
+
         # 파일 타입 검증
         if not image.content_type or not image.content_type.startswith("image/"):
+            logger.warning(
+                f"잘못된 파일 타입 - 사용자: {user_id}, content_type: {image.content_type}"
+            )
             raise HTTPException(
                 status_code=400, detail="이미지 파일만 업로드 가능합니다."
             )
 
         # 파일 크기 검증 (10MB 제한)
         if image.size and image.size > 10 * 1024 * 1024:
+            logger.warning(f"파일 크기 초과 - 사용자: {user_id}, 크기: {image.size}")
             raise HTTPException(
                 status_code=400, detail="파일 크기는 10MB를 초과할 수 없습니다."
             )
@@ -65,6 +72,10 @@ async def upload_image(
             user_id=user_id,
         )
 
+        logger.info(
+            f"이미지 업로드 성공 - 사용자: {user_id}, URL: {upload_result['public_url']}"
+        )
+
         return ImageUploadResponse(
             status="success",
             message="이미지가 성공적으로 업로드되었습니다.",
@@ -74,6 +85,7 @@ async def upload_image(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"이미지 업로드 실패 - 사용자: {user_id}, 오류: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"이미지 업로드 중 오류가 발생했습니다: {str(e)}"
         )
@@ -96,8 +108,15 @@ async def generate_interior(
     인테리어 이미지를 생성하고 가구를 인식하는 엔드포인트 (명세서 기반)
     """
     try:
+        logger.info(
+            f"인테리어 생성 요청 - 사용자: {user_id}, 방타입: {request.room_type}, 스타일: {request.style}"
+        )
+
         # 필수 필드 검증
         if not request.room_type or not request.style or not request.prompt:
+            logger.warning(
+                f"필수 필드 누락 - 사용자: {user_id}, room_type: {request.room_type}, style: {request.style}, prompt: {request.prompt}"
+            )
             return (
                 ErrorResponse(
                     status="failed",
@@ -107,6 +126,7 @@ async def generate_interior(
                 422,
             )
         if not request.image_url:
+            logger.warning(f"이미지 URL 누락 - 사용자: {user_id}")
             return (
                 ErrorResponse(
                     status="failed",
@@ -124,9 +144,12 @@ async def generate_interior(
             style=request.style,
             prompt=request.prompt,
         )
+
+        logger.info(f"인테리어 생성 성공 - 사용자: {user_id}")
         return response
 
     except Exception as e:
+        logger.error(f"인테리어 생성 실패 - 사용자: {user_id}, 오류: {str(e)}")
         return (
             ErrorResponse(
                 status="error",

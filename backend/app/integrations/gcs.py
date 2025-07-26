@@ -6,8 +6,10 @@ from google.cloud import storage
 from PIL import Image
 import io
 from app.config import get_settings
+from app.utils.logger import get_logger
 
 settings = get_settings()
+logger = get_logger("gcs_service")
 
 
 class GCSService:
@@ -106,5 +108,5 @@ class GCSService:
             blob.delete()
             return True
         except Exception as e:
-            print(f"이미지 삭제 실패: {str(e)}")
+            logger.error(f"이미지 삭제 실패: {str(e)}")
             return False
