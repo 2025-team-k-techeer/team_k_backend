@@ -65,6 +65,7 @@ class StyleInfo(BaseModel):
     style_id: str
     name: str
     description: str
+    image_url: Optional[str] = None  # 스타일 이미지 URL 추가
 
 
 class StyleInfoRequest(BaseModel):
