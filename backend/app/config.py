@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,10 +43,16 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str
     CELERY_RESULT_BACKEND: str
 
+
     # Interior style images base URL
     INTERIOR_STYLE_IMAGE_BASE_URL: str = (
         "https://storage.googleapis.com/furniture-image-bucket"
     )
+
+    # Logging settings
+    LOG_LEVEL: str = "INFO"
+    LOG_FILE: Optional[str] = None  # 로그 파일 경로 (예: "/logs/app.log")
+
 
     # database_password: str
     # jwt_secret: str

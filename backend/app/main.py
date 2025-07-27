@@ -4,7 +4,13 @@ from app.user.interface.controller import user_controller
 from app.interior.interface.controller import interior_controller
 from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi.middleware.cors import CORSMiddleware
+from app.utils.logger import setup_logger
+from app.config import get_settings
 
+# 로깅 설정
+settings = get_settings()
+logger = setup_logger("team_k_backend", settings.LOG_LEVEL, log_file=settings.LOG_FILE)
+logger.info("🚀 FastAPI 애플리케이션 시작")
 
 app = FastAPI()
 
@@ -23,7 +29,14 @@ app.add_middleware(
     allow_origins=origins,  # "*"을 넣으면 모든 origin 허용 (개발용)
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-Requested-With",
+        "Accept",
+        "Origin",
+        "Referer",
+    ],
 )
 
 

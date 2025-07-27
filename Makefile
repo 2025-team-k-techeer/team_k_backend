@@ -9,6 +9,19 @@ docker-dev-down:
 docker-dev-logs:
 	docker compose -f dev-docker-compose.yml logs -f
 
+docker-dev-logs-fastapi:
+	docker compose -f dev-docker-compose.yml logs -f fastapi
+
+docker-dev-logs-recent:
+	docker compose -f dev-docker-compose.yml logs --tail=100
+
+# 로그 뷰어 스크립트 사용
+logs-follow:
+	python scripts/log_viewer.py --follow --service fastapi
+
+logs-recent:
+	python scripts/log_viewer.py --service fastapi --lines 50
+
 docker-dev-sh:
 	docker exec -it fastapi bash
 

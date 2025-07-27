@@ -6,8 +6,10 @@ import httpx
 import asyncio
 from typing import Optional
 from app.config import get_settings
+from app.utils.logger import get_logger
 
 settings = get_settings()
+logger = get_logger("replicate_service")
 
 
 class ReplicateService:
@@ -83,19 +85,21 @@ class ReplicateService:
                 )
 
                 if generated_image_url:
-                    print(
+                    logger.info(
                         f"✅ Interior image generated successfully for {room_type} with {style} style"
                     )
                     return generated_image_url
                 else:
-                    print(f"❌ Failed to generate interior image for {room_type}")
+                    logger.error(
+                        f"❌ Failed to generate interior image for {room_type}"
+                    )
                     return None
 
         except httpx.HTTPStatusError as e:
-            print(f"❌ HTTP Error in Replicate API: {e.response.text}")
+            logger.error(f"❌ HTTP Error in Replicate API: {e.response.text}")
             return None
         except Exception as e:
-            print(f"❌ Error in Replicate service: {str(e)}")
+            logger.error(f"❌ Error in Replicate service: {str(e)}")
             return None
 
     async def _poll_prediction_result(
@@ -123,28 +127,28 @@ class ReplicateService:
                     elif isinstance(output, str):
                         return output  # 단일 이미지 URL
                     else:
-                        print("❌ Unexpected output format from Replicate")
+                        logger.error("❌ Unexpected output format from Replicate")
                         return None
 
                 elif poll_data["status"] == "failed":
-                    print(
+                    logger.error(
                         f"❌ Prediction failed: {poll_data.get('error', 'Unknown error')}"
                     )
                     return None
                 else:
                     # 진행 중이면 대기
-                    print(f"⏳ Polling... Status: {poll_data['status']}")
+                    logger.debug(f"⏳ Polling... Status: {poll_data['status']}")
                     await asyncio.sleep(1)
                     attempt += 1
 
             except httpx.HTTPStatusError as e:
-                print(f"❌ HTTP Error while polling: {e.response.text}")
+                logger.error(f"❌ HTTP Error while polling: {e.response.text}")
                 return None
             except Exception as e:
-                print(f"❌ Error while polling: {str(e)}")
+                logger.error(f"❌ Error while polling: {str(e)}")
                 return None
 
-        print("❌ Timeout waiting for prediction result")
+        logger.error("❌ Timeout waiting for prediction result")
         return None
 
 

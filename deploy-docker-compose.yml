@@ -7,9 +7,10 @@ services:
       # - "5678:5678"  # Debugging port
     volumes:
       - ./backend:/backend
-      - ./${GOOGLE_APPLICATION_CREDENTIALS}:/${GOOGLE_APPLICATION_CREDENTIALS}:ro  # 키 파일 마운트 / 배포 환경 중에서는 변경 필요.
+      - ./key/wise-vault-465615-r2-f259679465ef.json:/key/wise-vault-465615-r2-f259679465ef.json:ro
     environment:
       - MONGO_URI=${MONGO_URI}
+      - GOOGLE_APPLICATION_CREDENTIALS=/key/wise-vault-465615-r2-f259679465ef.json
     env_file:
       - .env
     depends_on:
@@ -26,7 +27,8 @@ services:
           target: /backend/requirements.txt
           action: rebuild
     command: >
-      gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+      gunicorn app.main:app 
+      -c gunicorn.conf.py
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.fastapi.rule=Host(`api.zipkku.shop`)"
@@ -35,13 +37,6 @@ services:
       - "traefik.http.routers.fastapi.tls.certresolver=letsencrypt"
       - "traefik.http.services.fastapi.loadbalancer.server.port=8000"
       - "traefik.docker.network=app-network"
-      - "traefik.http.middlewares.fastapi-cors.headers.accesscontrolallowmethods=GET,POST,OPTIONS,PUT,DELETE"
-      - "traefik.http.middlewares.fastapi-cors.headers.accesscontrolalloworiginlist=https://zipkku.shop"
-      - "traefik.http.middlewares.fastapi-cors.headers.accesscontrolallowheaders=*"
-      - "traefik.http.middlewares.fastapi-cors.headers.accesscontrolallowcredentials=true"
-      - "traefik.http.middlewares.fastapi-cors.headers.addvaryheader=true"
-            # :white_check_mark: CORS 미들웨어 적용
-      - "traefik.http.routers.fastapi.middlewares=fastapi-cors"
 
   mongo:
     image: mongo
