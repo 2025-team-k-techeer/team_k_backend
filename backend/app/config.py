@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str
     CELERY_RESULT_BACKEND: str
 
+    # Interior style images base URL
+    INTERIOR_STYLE_IMAGE_BASE_URL: str = (
+        "https://storage.googleapis.com/furniture-image-bucket"
+    )
+
     # database_password: str
     # jwt_secret: str
     # email_password: str
