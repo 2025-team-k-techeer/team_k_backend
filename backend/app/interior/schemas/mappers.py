@@ -165,20 +165,46 @@ def domain_to_user_library_interior(
 
 def interior_type_to_style_info_item(style: "InteriorType") -> "StyleInfo":
     from app.interior.schemas.interior_schema import StyleInfo
+    from app.config import get_settings
+
+    settings = get_settings()
+
+    # 기본 URL과 상대 경로를 조합하여 완전한 이미지 URL 생성
+    full_image_url = None
+    if style.image_url:
+        # 상대 경로가 /로 시작하면 기본 URL과 조합
+        if style.image_url.startswith("/"):
+            full_image_url = settings.INTERIOR_STYLE_IMAGE_BASE_URL + style.image_url
+        else:
+            full_image_url = style.image_url
 
     return StyleInfo(
         style_id=style.id,
         name=style.name,
         description=style.description,
+        image_url=full_image_url,
     )
 
 
 def interior_type_to_style_info_response(style: "InteriorType") -> dict:
     from app.interior.schemas.interior_schema import StyleInfoResponse
+    from app.config import get_settings
+
+    settings = get_settings()
+
+    # 기본 URL과 상대 경로를 조합하여 완전한 이미지 URL 생성
+    full_image_url = None
+    if style.image_url:
+        # 상대 경로가 /로 시작하면 기본 URL과 조합
+        if style.image_url.startswith("/"):
+            full_image_url = settings.INTERIOR_STYLE_IMAGE_BASE_URL + style.image_url
+        else:
+            full_image_url = style.image_url
 
     return StyleInfoResponse(
         status="success",
         style_id=style.id,
         name=style.name,
         description=style.description,
+        image_url=full_image_url,
     )
