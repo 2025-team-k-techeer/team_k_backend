@@ -52,7 +52,7 @@ async def get_similar_ar_objects(request: ARSimilarObjectRequest):
 
     # 4. AR 객체에 크기 정보 추가
     objects = []
-    for d in ar_docs:
+    for d in ar_docs[:3]:  # 최대 3개 객체 반환
         objects.append(
             ARObject(
                 id=str(d["_id"]),
