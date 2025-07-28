@@ -238,7 +238,7 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
     networks:                 # :white_check_mark: 이거 추가
-    - app-network
+      - app-network
   grafana:
     image: grafana/grafana:9.5.20
     user: root
