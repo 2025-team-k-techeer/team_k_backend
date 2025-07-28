@@ -31,9 +31,9 @@ class ReplicateService:
 
     def _build_prompt(self, room_type: str, style: str, prompt: str) -> str:
         """프롬프트 생성"""
-        base_prompt = f"a {style.lower()} {room_type.lower()}"
+        base_prompt = f"a normal {style.lower()} {room_type.lower()} room"
         if prompt:
-            base_prompt += f", {prompt}"
+            base_prompt += f", with {prompt}"
         return base_prompt
 
     async def generate_interior_image(
@@ -61,7 +61,7 @@ class ReplicateService:
                 "input": {
                     "image": image_url,
                     "prompt": generated_prompt,
-                    "a_prompt": "best quality, extremely detailed, photo from Pinterest, interior, cinematic photo, ultra-detailed, ultra-realistic, award-winning",
+                    "a_prompt": "best quality, extremely detailed, photo from Pinterest, interior, ultra-detailed, ultra-realistic, award-winning",
                     "n_prompt": "longbody, lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
                 },
             }

@@ -223,8 +223,6 @@ services:
       - app-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.grafana.rule=Host(`grafana.zipkku.shop`)"
-      - "traefik.http.routers.grafana.entrypoints=web"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
       - "logging=promtail"
       - "logging_jobname=traefik"
